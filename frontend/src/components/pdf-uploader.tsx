@@ -114,7 +114,7 @@ export function PdfUploader() {
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         className={[
-          "flex min-h-40 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed bg-muted/40 p-6 text-center text-sm transition-colors",
+          "flex min-h-40 w-full cursor-pointer flex-col items-center justify-center border border-dashed bg-muted/40 p-6 text-center text-sm transition-colors",
           isDragging ? "border-primary bg-primary/5" : "border-border",
           isUploading ? "opacity-70" : "",
         ].join(" ")}
@@ -167,7 +167,7 @@ export function PdfUploader() {
       {message && (
         <article
           className={[
-            "rounded-md border px-3 py-2 text-xs",
+            "border px-3 py-2 text-xs",
             uploadState === "error"
               ? "border-destructive/40 bg-destructive/5 text-destructive"
               : "border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
