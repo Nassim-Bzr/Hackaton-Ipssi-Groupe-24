@@ -1,20 +1,26 @@
-import { Button } from "@/components/ui/button"
+import { PdfUploader } from "@/components/pdf-uploader"
 
 export function App() {
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
+    <main className="flex min-h-svh items-center justify-center px-4 py-10">
+      <div className="flex w-full max-w-2xl flex-col gap-6">
+        <header className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Import de documents PDF
+          </h1>
+          <p className="max-w-xl text-sm text-muted-foreground">
+            Sélectionnez ou déposez plusieurs fichiers au format PDF. Ils seront
+            envoyés à votre backend via une requête HTTP sur{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-xs">
+              POST http://localhost:3000/upload
+            </code>
+            .
+          </p>
+        </header>
+
+        <PdfUploader />
       </div>
-    </div>
+    </main>
   )
 }
 
