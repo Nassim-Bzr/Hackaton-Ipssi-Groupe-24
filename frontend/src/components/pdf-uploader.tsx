@@ -1,34 +1,31 @@
+import { PdfFormulaire } from "@/components/pdf-formulaire"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import type { PdfForm } from "@/types/pdf-form.type"
+import type { UploadState } from "@/types/upload-state.type"
+import { handlePdfFiles } from "@/utils/handle-pdf-files"
+import { handleUploadAll as handleUploadAllUtil } from "@/utils/handle-upload-all"
+import { uploadSingleForm as uploadSingleFormUtil } from "@/utils/upload-single-form"
 import React, { useCallback, useRef, useState } from "react"
 
-import { Button } from "@/components/ui/button"
-
-type UploadState = "idle" | "uploading" | "success" | "error"
-
 export function PdfUploader() {
-  const [files, setFiles] = useState<File[]>([])
+  const [forms, setForms] = useState<PdfForm[]>([])
   const [isDragging, setIsDragging] = useState(false)
-  const [uploadState, setUploadState] = useState<UploadState>("idle")
-  const [message, setMessage] = useState<string | null>(null)
+  const [isUploadingAll, setIsUploadingAll] = useState(false)
+  const [globalMessage, setGlobalMessage] = useState<string | null>(null)
+  const [globalStatus, setGlobalStatus] = useState<UploadState>("idle")
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  const handleFiles = useCallback((fileList: FileList | null) => {
-    if (!fileList) return
-
-    const selected = Array.from(fileList)
-    const pdfFiles = selected.filter(
-      (file) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"),
-    )
-
-    if (pdfFiles.length === 0) {
-      setMessage("Veuillez sélectionner uniquement des fichiers PDF.")
-      setUploadState("error")
-      return
-    }
-
-    setFiles(pdfFiles)
-    setMessage(null)
-    setUploadState("idle")
-  }, [])
+  const handleFiles = useCallback(
+    (fileList: FileList | null) => {
+      handlePdfFiles(fileList, {
+        setForms,
+        setGlobalMessage,
+        setGlobalStatus,
+      })
+    },
+    [setForms, setGlobalMessage, setGlobalStatus],
+  )
 
   const onInputChange = useCallback<React.ChangeEventHandler<HTMLInputElement>>(
     (event) => {
@@ -63,49 +60,37 @@ export function PdfUploader() {
     inputRef.current?.click()
   }
 
-  const handleUpload = async () => {
-    if (!files.length || uploadState === "uploading") {
-      return
-    }
-
-    setUploadState("uploading")
-    setMessage(null)
-
-    try {
-      const formData = new FormData()
-      // Ajout de chaque PDF sous la même clé pour un traitement côté backend.
-      files.forEach((file) => {
-        formData.append("files", file)
+  const updateFormAtIndex = useCallback(
+    (index: number, updater: (form: PdfForm) => PdfForm) => {
+      setForms((prev) => {
+        if (!prev[index]) return prev
+        const next = [...prev]
+        next[index] = updater(next[index])
+        return next
       })
+    },
+    [setForms],
+  )
 
-      const response = await fetch("http://localhost:3000/upload", {
-        method: "POST",
-        body: formData,
-      })
+  const uploadSingleForm = useCallback(
+    (index: number) => uploadSingleFormUtil(index, forms, updateFormAtIndex),
+    [forms, updateFormAtIndex],
+  )
 
-      if (!response.ok) {
-        throw new Error("Réponse du serveur invalide")
-      }
+  const handleUploadAll = useCallback(
+    () =>
+      handleUploadAllUtil(forms, {
+        isUploadingAll,
+        setIsUploadingAll,
+        setGlobalMessage,
+        setGlobalStatus,
+        inputRef,
+        uploadSingleForm,
+      }),
+    [forms, isUploadingAll, setIsUploadingAll, setGlobalMessage, setGlobalStatus, inputRef, uploadSingleForm],
+  )
 
-      setUploadState("success")
-      setMessage("Les fichiers PDF ont été envoyés avec succès.")
-      setFiles([])
-      if (inputRef.current) {
-        inputRef.current.value = ""
-      }
-    } catch (error) {
-      console.error(error)
-      setUploadState("error")
-      setMessage(
-        "Une erreur est survenue lors de l'envoi des fichiers. Veuillez vérifier que le serveur est accessible.",
-      )
-    } finally {
-      setUploadState((current) => (current === "uploading" ? "idle" : current))
-    }
-  }
-
-  const hasFiles = files.length > 0
-  const isUploading = uploadState === "uploading"
+  const hasFiles = forms.length > 0
 
   return (
     <section className="flex w-full max-w-xl flex-col gap-4">
@@ -116,11 +101,11 @@ export function PdfUploader() {
         className={[
           "flex min-h-40 w-full cursor-pointer flex-col items-center justify-center border border-dashed bg-muted/40 p-6 text-center text-sm transition-colors",
           isDragging ? "border-primary bg-primary/5" : "border-border",
-          isUploading ? "opacity-70" : "",
+          isUploadingAll ? "opacity-70" : "",
         ].join(" ")}
         onClick={triggerFileDialog}
       >
-        <input
+        <Input
           ref={inputRef}
           type="file"
           accept="application/pdf"
@@ -134,8 +119,8 @@ export function PdfUploader() {
         </p>
         {hasFiles ? (
           <p className="text-xs text-foreground">
-            {files.length} fichier{files.length > 1 ? "s" : ""} sélectionné
-            {files.length > 1 ? "s" : ""}.
+            {forms.length} fichier{forms.length > 1 ? "s" : ""} sélectionné
+            {forms.length > 1 ? "s" : ""}.
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
@@ -145,11 +130,32 @@ export function PdfUploader() {
       </article>
 
       {hasFiles && (
-        <ul className="max-h-32 list-disc space-y-1 overflow-auto pl-5 text-xs text-muted-foreground">
-          {files.map((file) => (
-            <li key={file.name}>{file.name}</li>
+        <section className="flex flex-col gap-3">
+          {forms.map((form, index) => (
+            <PdfFormulaire
+              key={`${form.file.name}-${index}`}
+              fileName={form.file.name}
+              idValue={form.id}
+              nomValue={form.nom}
+              uploadState={form.uploadState}
+              message={form.message}
+              isUploadingAll={isUploadingAll}
+              onChangeId={(value) =>
+                updateFormAtIndex(index, (current) => ({
+                  ...current,
+                  id: value,
+                }))
+              }
+              onChangeNom={(value) =>
+                updateFormAtIndex(index, (current) => ({
+                  ...current,
+                  nom: value,
+                }))
+              }
+              onUpload={() => uploadSingleForm(index)}
+            />
           ))}
-        </ul>
+        </section>
       )}
 
       <article className="flex items-center gap-2">
@@ -157,23 +163,23 @@ export function PdfUploader() {
           type="button"
           variant="default"
           size="sm"
-          onClick={handleUpload}
-          disabled={!hasFiles || isUploading}
+          onClick={handleUploadAll}
+          disabled={!hasFiles || isUploadingAll}
         >
-          {isUploading ? "Envoi en cours..." : "Envoyer les PDF"}
+          {isUploadingAll ? "Envoi de tous les formulaires..." : "Uploader tous les formulaires"}
         </Button>
       </article>
 
-      {message && (
+      {globalMessage && (
         <article
           className={[
             "border px-3 py-2 text-xs",
-            uploadState === "error"
+            globalStatus === "error"
               ? "border-destructive/40 bg-destructive/5 text-destructive"
               : "border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
           ].join(" ")}
         >
-          {message}
+          {globalMessage}
         </article>
       )}
     </section>
