@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+
+# Env
+.env
+.env.*
+
+# Data (générés localement)
+data/bronze/
+data/silver/
+data/gold/
+
+# OS
+.DS_Store
