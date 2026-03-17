@@ -1,4 +1,4 @@
-import { PdfFormulaire } from "@/components/pdf-formulaire"
+import { PdfFormulaire } from "@/components/forms/pdf-formulaire"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { PdfForm } from "@/types/pdf-form.type"
@@ -17,8 +17,8 @@ export function PdfUploader() {
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const handleFiles = useCallback(
-    (fileList: FileList | null) => {
-      handlePdfFiles(fileList, {
+    async (fileList: FileList | null) => {
+      await handlePdfFiles(fileList, {
         setForms,
         setGlobalMessage,
         setGlobalStatus,
@@ -29,7 +29,7 @@ export function PdfUploader() {
 
   const onInputChange = useCallback<React.ChangeEventHandler<HTMLInputElement>>(
     (event) => {
-      handleFiles(event.target.files)
+      void handleFiles(event.target.files)
     },
     [handleFiles],
   )
@@ -39,7 +39,7 @@ export function PdfUploader() {
       event.preventDefault()
       event.stopPropagation()
       setIsDragging(false)
-      handleFiles(event.dataTransfer.files)
+      void handleFiles(event.dataTransfer.files)
     },
     [handleFiles],
   )
@@ -134,24 +134,11 @@ export function PdfUploader() {
           {forms.map((form, index) => (
             <PdfFormulaire
               key={`${form.file.name}-${index}`}
-              fileName={form.file.name}
-              idValue={form.id}
-              nomValue={form.nom}
+              form={form}
               uploadState={form.uploadState}
               message={form.message}
               isUploadingAll={isUploadingAll}
-              onChangeId={(value) =>
-                updateFormAtIndex(index, (current) => ({
-                  ...current,
-                  id: value,
-                }))
-              }
-              onChangeNom={(value) =>
-                updateFormAtIndex(index, (current) => ({
-                  ...current,
-                  nom: value,
-                }))
-              }
+              onChange={(updater) => updateFormAtIndex(index, updater)}
               onUpload={() => uploadSingleForm(index)}
             />
           ))}

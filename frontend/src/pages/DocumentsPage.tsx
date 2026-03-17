@@ -1,19 +1,65 @@
-type TypeFichier = "facture" | "devis"
-
-interface DocumentItem {
-  id: number
-  nom: string
-  date: string
-  type: TypeFichier
-}
-
-const documentsMock: DocumentItem[] = [
-  { id: 1, nom: "Facture Janvier", date: "2024-01-15", type: "facture" },
-  { id: 2, nom: "Devis Projet Alpha", date: "2024-02-02", type: "devis" },
-  { id: 3, nom: "Facture Février", date: "2024-02-20", type: "facture" },
-]
+import { DocumentCard } from "@/components/cards/document-card"
+import type { DocumentResponse } from "@/types/documents.type"
+import { useEffect, useState } from "react"
 
 export function DocumentsPage() {
+  const [documents, setDocuments] = useState<DocumentResponse>()
+  const [loading, setLoading] = useState<boolean>(true)
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      setLoading(true)
+      try {
+        const response = await fetch("http://localhost:3000/documents")
+
+        if (!response.ok) {
+          throw new Error(`Erreur lors de la récupération des documents (${response.status})`)
+        }
+
+        const data: DocumentResponse = await response.json()
+        console.log(data)
+        setDocuments(data)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDocuments()
+  }, [])
+
+  // Pendant le chargement, on affiche un état de chargement
+  if (loading) {
+    return (
+      <main className="mt-14">
+        <div className="flex w-full flex-col gap-6">
+          <header className="space-y-2">
+            <h1 className="text-2xl font-semibold tracking-tight">Tous les documents</h1>
+            <p className="text-sm text-muted-foreground">Chargement des documents en cours...</p>
+          </header>
+        </div>
+      </main>
+    )
+  }
+
+  const documentsArray = Array.isArray(documents?.documents) ? documents!.documents : []
+
+  // Si aucun document trouvé, on affiche un message
+  if (!loading && documentsArray.length === 0) {
+    return (
+      <main className="mt-14">
+        <div className="flex w-full flex-col gap-6">
+          <header className="space-y-2">
+            <h1 className="text-2xl font-semibold tracking-tight">Tous les documents</h1>
+            <p className="text-sm text-muted-foreground">Aucun document trouvé dans la base de données.</p>
+          </header>
+        </div>
+      </main>
+    )
+  }
+
+  // Si des documents sont trouvés, on affiche la liste des documents
   return (
     <main className="mt-14">
       <div className="flex w-full flex-col gap-6">
@@ -26,24 +72,20 @@ export function DocumentsPage() {
         </header>
 
         <section className="grid gap-4 md:grid-cols-3">
-          {documentsMock.map((document) => (
-            <article
+          {documentsArray.map((document) => (
+            <DocumentCard
               key={document.id}
-              className="border bg-muted/60 px-4 py-3 text-sm shadow-sm"
-            >
-              <p>
-                <span className="font-semibold">ID :</span> {document.id}
-              </p>
-              <p>
-                <span className="font-semibold">Nom :</span> {document.nom}
-              </p>
-              <p>
-                <span className="font-semibold">Date :</span> {document.date}
-              </p>
-              <p>
-                <span className="font-semibold">Type de fichier :</span> {document.type}
-              </p>
-            </article>
+              id={document.id}
+              nom={document.nom}
+              documentType={document.document_type}
+              date={document.date}
+              siret={document.entities.siret}
+              siren={document.entities.siren}
+              montantHt={document.entities.montant_ht}
+              montantTtc={document.entities.montant_ttc}
+              tva={document.entities.tva}
+              iban={document.entities.iban}
+            />
           ))}
         </section>
       </div>

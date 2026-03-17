@@ -10,7 +10,7 @@ from config.settings import UPLOAD_DIR, VALIDATION_SERVICE_URL
 
 router = APIRouter()
 
-
+""" Route utilisé pour analyser le document et pré-remplir les formulaires """
 @router.post("/upload", status_code=201)
 async def upload_document(
     file: UploadFile = File(...),
@@ -55,8 +55,7 @@ async def upload_document(
     except requests.RequestException:
         pass  # La validation est best-effort
 
-    # Construction du document final
-    document = {
+    return {
         "doc_id": resultat["doc_id"],
         "id": id,
         "nom": nom,
@@ -65,14 +64,5 @@ async def upload_document(
         "entities": entities,
         "is_valid": is_valid,
         "validation_details": validation_details,
-    }
-
-    save_document(document)
-
-    return {
-        "doc_id": document["doc_id"],
-        "document_type": document["document_type"],
-        "is_valid": is_valid,
         "confidence_score": resultat["metadata"]["confidence_score"],
-        "entities": entities,
     }
