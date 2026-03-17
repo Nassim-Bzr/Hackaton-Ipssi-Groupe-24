@@ -7,5 +7,15 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  validations:
+    build:
+      context: ./validations
+      dockerfile: Dockerfile
+    container_name: validations
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+
 volumes:
   mongo_data:
