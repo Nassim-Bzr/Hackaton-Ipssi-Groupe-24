@@ -14,5 +14,10 @@ dist/
 .env
 .env.*
 
+# Data (générés localement)
+data/bronze/
+data/silver/
+data/gold/
+
 # OS
 .DS_Store
