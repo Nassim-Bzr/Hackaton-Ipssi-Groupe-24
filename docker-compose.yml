@@ -32,5 +32,15 @@ services:
       - mongodb
       - validations
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
 volumes:
   mongo_data:
