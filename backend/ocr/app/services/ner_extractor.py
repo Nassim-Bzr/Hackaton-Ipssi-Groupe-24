@@ -8,10 +8,9 @@ def _normaliser_siret(valeur: str) -> str:
 
 
 def extraire_tous_les_siret(texte: str) -> list[str]:
-    """
-    Retourne tous les SIRET trouvés dans le texte (14 chiffres), en acceptant les espaces.
-    Exemple : \"625 098 876 00018\" -> \"62509887600018\".
-    """
+    
+    #Retourne tous les SIRET trouvés dans le texte en acceptant les espaces.
+    
     if not texte:
         return []
     candidates = re.findall(r"\b\d{3}[\s.]?\d{3}[\s.]?\d{3}[\s.]?\d{5}\b", texte)
@@ -26,19 +25,19 @@ def extraire_tous_les_siret(texte: str) -> list[str]:
 
 
 def extraire_siret(texte):
-    # Cherche le premier SIRET (14 chiffres), en acceptant les espaces.
+    # Cherche le premier SIRET 
     sirets = extraire_tous_les_siret(texte)
     return sirets[0] if sirets else None
 
 
 def extraire_siren(texte):
-    # Cherche un SIREN : 9 chiffres NON suivis d'autres chiffres (évite de confondre avec un SIRET)
+    # Cherche un SIREN : 9 chiffres NON suivis d'autres chiffres pour eviter de le confondre avec un SIRET
     match = re.search(r'\b\d{9}\b(?!\d)', texte)
     return match.group() if match else None
 
 
 def extraire_iban(texte):
-    # Cherche un IBAN français : commence par FR suivi de 25 chiffres/lettres
+    # Cherche un IBAN français  FR+25caracteres
     match = re.search(r'\bFR\d{2}[\s]?(\d{4}[\s]?){5}\d{3}\b', texte, re.IGNORECASE)
     if match:
         return match.group().replace(" ", "")  
@@ -46,15 +45,14 @@ def extraire_iban(texte):
 
 
 def extraire_montant(texte, mot_cle):
-    # Cherche un montant associé à un mot clé (ex: "HT", "TTC", "TVA", "brut", "net")
-    # [^\S\n]* = espaces mais PAS de saut de ligne (évite de prendre le montant de la ligne d'avant)
-    # [^\d\n]* = tout sauf chiffre et saut de ligne (permet de passer " : " entre le mot clé et le nombre)
-    pattern = rf'(\d[\d\s]*[.,]\d{{2}})[^\S\n]*{mot_cle}|{mot_cle}[^\d\n]*(\d[\d\s]*[.,]\d{{2}})'
+    # Cherche un montant associé aux mots clés : "HT", "TTC", "TVA", "brut", "net"
+    # [^\S\n]* = espaces mais PAS saut de ligne → évite que "1000,00\nTVA" matche faussement
+    pattern = rf'(\d+[.,]\d{{2}})[^\S\n]*€?[^\S\n]*{mot_cle}|{mot_cle}[^\n]*?(\d+[.,]\d{{2}})[^\S\n]*€?'
     match = re.search(pattern, texte, re.IGNORECASE)
     if match:
-        valeur = match.group(1) or match.group(2)           # Prend le groupe qui a matché
-        valeur = valeur.replace(" ", "").replace(",", ".")  # Nettoie le nombre
-        return float(valeur)                                # Convertit en décimal
+        valeur = match.group(1) or match.group(2)           
+        valeur = valeur.replace(" ", "").replace(",", ".")  
+        return float(valeur)                             
     return None
 
 
@@ -70,8 +68,8 @@ def extraire_date(texte, mots_cles):
 
 def extraire_numero_facture(texte: str) -> str | None:
     """
-    Extrait un numéro de facture près de \"FACTURE\" / \"Facture N°\".
-    Accepte les retours à la ligne (ex: \"FACTURE N°\\nFAC-2026-0001\").
+    pour extraire un numéro de facture pres de \"FACTURE\" / \"Facture N°\".
+    et accepte les retours à la ligne (ex: \"FACTURE N°\\nFAC-2026-0001\").
     """
     if not texte:
         return None
@@ -87,7 +85,7 @@ def extraire_numero_facture(texte: str) -> str | None:
 
 
 def extraire_mode_paiement(texte: str) -> str | None:
-    """Extrait le mode de règlement (ex: \"Carte bancaire\") si présent."""
+    # pour extraire le mode de règlement  si il se trouve dans la facture 
     if not texte:
         return None
     match = re.search(
@@ -102,14 +100,14 @@ def extraire_mode_paiement(texte: str) -> str | None:
 
 
 def extraire_date_echeance(texte: str) -> str | None:
-    """Extrait la date d'échéance si présente (Échéance / Echeance / À régler avant le)."""
+    # pour extraire la date d'échéance si présente 
     return extraire_date(texte, ["échéance", "echeance", "à régler avant le", "a regler avant le"])
 
 
 def extraire_siret_fournisseur_client(texte: str) -> dict:
     """
-    Essaie d'attribuer un SIRET au fournisseur et au client.
-    Heuristique simple : séparation par la section \"FACTURÉ À\" (ou variantes).
+    on essaie d'attribuer un SIRET au fournisseur et au client
+    : séparation par la section \"FACTURÉ À\" (ou variantes).
     """
     sirets = extraire_tous_les_siret(texte)
     if not sirets:
@@ -129,9 +127,17 @@ def extraire_siret_fournisseur_client(texte: str) -> dict:
 
 
 def extraire_fournisseur(texte):
-    # Cherche la ligne qui suit le mot "Fournisseur", "Émetteur", "Employeur" ou "Titulaire"
+    # Cherche la ligne qui suit un mot clé connu (Fournisseur, Émetteur, etc.)
     match = re.search(r'(?:Fournisseur|Émetteur|Employeur|Titulaire)\s*[:\-]?\s*(.+)', texte, re.IGNORECASE)
-    return match.group(1).strip() if match else None
+    if match:
+        return match.group(1).strip()
+    
+    # Fallback : prend la première ligne non vide du document ( maybe le nom de l'entreprise)
+    for ligne in texte.split('\n'):
+        ligne = ligne.strip()
+        if ligne and len(ligne) > 1 and not re.match(r'^\d', ligne):  # Ignore les lignes qui commencent par un chiffre
+            return ligne
+    return None
 
 
 def extraire_numero_fiscal(texte):

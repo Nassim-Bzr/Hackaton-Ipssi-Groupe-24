@@ -6,16 +6,15 @@ import os
 
 
 
-from preprocess import preprocess           
-from ocr_engine import extraire_texte       
-from ner_extractor import extraire_entites   
+from ocr_engine import extraire_texte
+from ner_extractor import extraire_entites
 
 
 def traiter_document(chemin_fichier):
     # Fonction principale qui reçoit un fichier et retourne le JSON final
 
-    image = preprocess(chemin_fichier)               
-    texte, score = extraire_texte(image)             
+    # pdfplumber lit directement le PDF — pas besoin de passer par preprocess
+    texte, score = extraire_texte(chemin_fichier)
     entites = extraire_entites(texte)                
 
     nom_fichier = os.path.basename(chemin_fichier)   
@@ -26,7 +25,7 @@ def traiter_document(chemin_fichier):
         "document_type": type_doc,                   
         "metadata": {
             "confidence_score": score,               
-            "engine":           "PaddleOCR",        
+            "engine":           "pdfplumber",
             "source_file":      nom_fichier,         
         },
         "entities": entites,                         # dictionnaire des champs extraits 

@@ -1,6 +1,7 @@
 #necessités  
 
 paddleocr
+pdfplumber
 pdf2image
 opencv-python
 pillow

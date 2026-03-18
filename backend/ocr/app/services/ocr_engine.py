@@ -1,21 +1,55 @@
-import pdfplumber
+# ocr_engine.py fichier pour lire le texte d'un fichier PDF ou image
+# Si le PDF contient du texte embarqué  on utilise  pdfplumber 
+# Si c'est un scan ou une image on utilise  PaddleOCR (lecture par intelligence artificielle)
+
+import pdfplumber                        
+from paddleocr import PaddleOCR          
+from preprocess import preprocess       
+
+# Création du moteur PaddleOCR une seule fois au démarrage (évite de le recharger à chaque appel)
+ocr = PaddleOCR(use_angle_cls=True, lang="fr")
 
 
-def extraire_texte(chemin_pdf: str) -> tuple[str, float]:
-    """
-    Extrait le texte embarqué d'un PDF (fpdf, Word exporté, etc.).
-    Retourne (texte_complet, score_confiance).
-    Le score est 1.0 si du texte est trouvé, 0.0 sinon.
-    """
-    pages_texte = []
+def extraire_texte_pdf(chemin_pdf):
+    # Lit le texte embarqué dans un PDF numérique avec pdfplumber
+    pages_texte = []                                    
+    with pdfplumber.open(chemin_pdf) as pdf:           
+        for page in pdf.pages:                          
+            texte = page.extract_text()                 
+            if texte:                                   
+                pages_texte.append(texte)               
+    return "\n".join(pages_texte).strip()               
 
-    with pdfplumber.open(chemin_pdf) as pdf:
-        for page in pdf.pages:
-            texte = page.extract_text()
-            if texte:
-                pages_texte.append(texte)
 
-    texte_complet = "\n".join(pages_texte).strip()
-    score = 1.0 if texte_complet else 0.0
+def extraire_texte_image(image):
+    # Lit le texte dans une image ou un scan avec PaddleOCR
+    resultats = ocr.predict(image)                      
+    lignes_texte = []                                   
+    scores = []                                         
+    for bloc in resultats:                              
+        for ligne in bloc.get("rec_texts", []):         
+            lignes_texte.append(ligne)
+        for score in bloc.get("rec_scores", []):        
+            scores.append(score)
+    texte = "\n".join(lignes_texte)                    
+    score_moyen = sum(scores) / len(scores) if scores else 0.0  
+    return texte, round(score_moyen, 2)                 
 
-    return texte_complet, score
+
+def extraire_texte(chemin_fichier):
+    # Fonction principale : choisit automatiquement la bonne méthode selon le fichier
+    # Retourne toujours (texte, score_confiance)
+
+    if chemin_fichier.endswith(".pdf"):                 
+        texte = extraire_texte_pdf(chemin_fichier)      # Essaie pdfplumber d'abord si c'est un pdf
+
+        if texte:                                       # Si du texte a été trouvé dans le PDF
+            return texte, 1.0                           # Score 1.0 = texte lu avec certitude
+
+        # Si pdfplumber ne trouve rien ça veut dire que  c'est un scan, on utilise PaddleOCR
+        image = preprocess(chemin_fichier)            
+        return extraire_texte_image(image)              # Lit l'image avec PaddleOCR
+
+    else:                                               
+        image = preprocess(chemin_fichier)           
+        return extraire_texte_image(image)            
