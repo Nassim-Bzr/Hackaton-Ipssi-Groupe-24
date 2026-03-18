@@ -3,4 +3,11 @@ uvicorn[standard]
 pymongo
 python-multipart
 requests
-pdfplumber
+urllib3<2.3
+chardet<6
+paddleocr
+paddlepaddle
+pdf2image
+opencv-python-headless
+pillow
+numpy

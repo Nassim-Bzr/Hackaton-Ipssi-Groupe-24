@@ -28,6 +28,7 @@ services:
       - MONGO_URI=mongodb://mongodb:27017
       - MONGO_DB=hackathon
       - VALIDATION_SERVICE_URL=http://validations:8000/data-validation
+      - PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
     depends_on:
       - mongodb
       - validations

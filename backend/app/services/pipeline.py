@@ -18,7 +18,7 @@ def traiter_document(chemin_fichier: str) -> dict:
         "document_type": type_doc,
         "metadata": {
             "confidence_score": score,
-            "engine": "pdfplumber",
+            "engine": "paddleocr",
             "source_file": nom_fichier,
         },
         "entities": entites,
