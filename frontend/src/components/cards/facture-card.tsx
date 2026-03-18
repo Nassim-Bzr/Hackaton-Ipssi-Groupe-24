@@ -11,6 +11,9 @@ export function FactureCard(props: FactureCardProps) {
     <article className="border bg-muted/60 px-4 py-3 text-sm shadow-sm">
       <h3 className="mb-2 font-bold text-lg underline underline-offset-4">Facture</h3>
       <p>
+        <span className="font-semibold">Numéro :</span> {document.entities.numero_facture}
+      </p>
+      <p>
         <span className="font-semibold">ID :</span> {document.id}
       </p>
       <p>
