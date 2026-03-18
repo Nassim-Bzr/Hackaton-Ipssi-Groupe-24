@@ -66,6 +66,10 @@ export function mapBackendAnalysisToPdfForm(file: File, data: any): PdfForm {
     ""
 
   const inferredNom: string = entities.nom_fournisseur || payload?.nom || ""
+  const inferredNomClient: string | undefined =
+    (prefill.nom_client as string | undefined) ||
+    (entities.nom_client as string | undefined) ||
+    undefined
 
   const inferredDateEmissionRaw: unknown = prefill.date_emission ?? entities.date_emission
   const inferredDateEmission: string | undefined = normalizeDateForDateInput(inferredDateEmissionRaw)
@@ -131,6 +135,7 @@ export function mapBackendAnalysisToPdfForm(file: File, data: any): PdfForm {
     file,
     id: inferredId,
     nom: inferredNom,
+    nomClient: inferredNomClient,
     dateEmission: inferredDateEmission,
     dateEcheance: inferredDateEcheance,
     dateExpiration: inferredDateExpiration,

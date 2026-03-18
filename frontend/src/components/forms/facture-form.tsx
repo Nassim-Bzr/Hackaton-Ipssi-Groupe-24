@@ -57,7 +57,7 @@ export function FactureForm({ facture, onUpload, isUploading }: FactureFormProps
 
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1">
-          <p className="text-xs font-medium">Nom fournisseur</p>
+          <p className="text-xs font-medium">FOURNISSEUR</p>
           <Input
             value={entities.nom_fournisseur ?? ""}
             onChange={(e) => setEntities((prev) => ({ ...prev, nom_fournisseur: e.target.value }))}
@@ -71,6 +71,15 @@ export function FactureForm({ facture, onUpload, isUploading }: FactureFormProps
             value={entities.numero_facture ?? ""}
             onChange={(e) => setEntities((prev) => ({ ...prev, numero_facture: e.target.value }))}
             placeholder="Ex: F-2026-001"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs font-medium">CLIENT</p>
+          <Input
+            value={entities.nom_client ?? ""}
+            onChange={(e) => setEntities((prev) => ({ ...prev, nom_client: e.target.value }))}
+            placeholder="Ex: John Doe"
           />
         </div>
 

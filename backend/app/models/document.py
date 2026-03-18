@@ -17,6 +17,7 @@ class DocumentEntities(BaseModel):
     date_emission: Optional[str] = None
     date_expiration: Optional[str] = None
     nom_fournisseur: Optional[str] = None
+    nom_client: Optional[str] = None
     iban: Optional[str] = None
 
 

@@ -168,6 +168,53 @@ def extraire_siret_fournisseur_client(texte: str) -> dict:
     return {"siret_fournisseur": siret_f, "siret_client": siret_c, "sirets": sirets}
 
 
+def extraire_client(texte: str) -> str | None:
+    """
+    Extrait le nom du client depuis la zone située après "FACTURÉ À"/"FACTURE A"
+    (ou variantes comme "ADRESSE A" selon le format OCR).
+    """
+    if not texte:
+        return None
+
+    # On priorise "FACTURÉ À"/"FACTURE A" car c'est le label le plus spécifique.
+    marker_facture = re.search(r"FACTUR[ÉE]\s+À|FACTURE\s+A|FACTURE\s+À", texte, re.IGNORECASE)
+    marker_adresse = re.search(r"ADRESSE\s+A|ADRESSE\s+À", texte, re.IGNORECASE)
+    marker = marker_facture or marker_adresse
+    if not marker:
+        return None
+
+    apres = texte[marker.end() :]
+
+    # On prend la première ligne "significative" après le marqueur.
+    # Si une ligne est sous la forme "Client : X", on capture directement X.
+    # Les lignes qu'on ne veut presque jamais confondre avec un "nom".
+    # On utilise une regex pour gérer correctement les accents OCR.
+    skip_re = re.compile(
+        r"^(?:SIRET|SIREN|IBAN|TVA|MONTANT|DATE|(?:[ÉE]CH[ÉE]ANCE|ECHEANCE)|MODE|TAUX|NUM(?:[ÉE]RO|ERO))",
+        re.IGNORECASE,
+    )
+
+    for ligne in apres.splitlines():
+        l = ligne.strip()
+        if not l:
+            continue
+
+        if skip_re.match(l):
+            continue
+
+        # Cas le plus fréquent dans vos tests OCR: "Client : Pichon"
+        m = re.match(r"^(?:Client|Destinataire)\s*[:\-]?\s*(.+?)\s*$", l, re.IGNORECASE)
+        if m:
+            nom = m.group(1).strip()
+            return nom or None
+
+        # Fallback: si c'est une autre ligne texte (souvent le bloc commence par le nom),
+        # on retourne telle quelle.
+        return l
+
+    return None
+
+
 def extraire_fournisseur(texte):
     # Cherche la ligne qui suit un mot clé connu (Fournisseur, Émetteur, etc.)
     match = re.search(r'(?:Fournisseur|Émetteur|Employeur|Titulaire)\s*[:\-]?\s*(.+)', texte, re.IGNORECASE)
@@ -261,6 +308,7 @@ def extraire_entites(texte):
 
         base.update({
             "nom_fournisseur": extraire_fournisseur(texte),
+            "nom_client": extraire_client(texte),
             "numero_facture":  extraire_numero_facture(texte),
             "date_echeance":   extraire_date_echeance(texte),
             "montant_ht":      montant_ht,
@@ -282,6 +330,7 @@ def extraire_entites(texte):
 
         base.update({
             "nom_fournisseur": extraire_fournisseur(texte),
+            "nom_client": extraire_client(texte),
             "numero_devis": extraire_numero_devis(texte),
             "montant_ht":      montant_ht,
             "montant_ttc":     montant_ttc,

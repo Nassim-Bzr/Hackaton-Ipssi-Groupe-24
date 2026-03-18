@@ -17,6 +17,7 @@ export interface DocumentItem {
     date_echeance: string
     date_expiration: string
     nom_fournisseur: string
+    nom_client?: string
     iban: string
   }
 }

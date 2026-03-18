@@ -7,6 +7,7 @@ export interface Facture {
     montant_ht: number
     montant_ttc: number
     nom_fournisseur: string
+    nom_client?: string
     numero_facture: string
     siren: string
     siret: string

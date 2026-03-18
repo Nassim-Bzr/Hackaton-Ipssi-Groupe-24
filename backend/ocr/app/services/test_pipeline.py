@@ -81,3 +81,9 @@ for nom, texte in textes:                                     # Parcourt chaque 
         assert (
             resultat.get("numero_devis") == "D-2026-007"
         ), f'numero_devis inattendu: {resultat.get("numero_devis")}'
+
+    # Validation minimale : le texte fictif "Facture" doit contenir le nom du client détecté
+    if nom == "Facture":
+        assert (
+            resultat.get("nom_client") == "Pichon"
+        ), f'nom_client inattendu: {resultat.get("nom_client")}'

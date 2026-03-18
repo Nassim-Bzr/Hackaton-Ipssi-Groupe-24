@@ -15,6 +15,7 @@ def construire_prefill(doc_id: str, document_type: str, entities: dict) -> dict:
         "document_type": document_type,
         "numero_facture": entities.get("numero_facture"),
         "numero_devis": entities.get("numero_devis"),
+        "nom_client": entities.get("nom_client"),
         "date_emission": entities.get("date_emission"),
         "date_echeance": entities.get("date_echeance"),
         "montant_ht": entities.get("montant_ht"),
