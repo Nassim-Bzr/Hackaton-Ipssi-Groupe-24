@@ -6,6 +6,7 @@ export interface DevisCardProps {
 
 export function DevisCard(props: DevisCardProps) {
   const { document } = props
+  console.log(document);
 
   return (
     <article className="border bg-muted/60 px-4 py-3 text-sm shadow-sm">
@@ -37,10 +38,6 @@ export function DevisCard(props: DevisCardProps) {
       <div className="grid grid-cols-2 gap-2">
         <p className="font-semibold">Siret :</p>
         <p>{document.entities.siret}</p>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <p className="font-semibold">Siren :</p>
-        <p>{document.entities.siren}</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <p className="font-semibold">Montant HT :</p>

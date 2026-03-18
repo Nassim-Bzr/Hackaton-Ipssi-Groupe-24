@@ -38,10 +38,6 @@ export function FactureCard(props: FactureCardProps) {
         <p className="font-semibold">Siret :</p>
         <p>{document.entities.siret}</p>
       </div>
-      <div className="grid grid-cols-2 gap-2" >
-        <p className="font-semibold">Siren :</p>
-        <p>{document.entities.siren}</p>
-      </div>
       <div className="grid grid-cols-2 gap-2">
         <p className="font-semibold">Montant HT :</p>
         <p>{document.entities.montant_ht}</p>
