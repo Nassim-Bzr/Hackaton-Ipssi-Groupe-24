@@ -1,50 +1,148 @@
-import type { DocumentItem } from "@/types/documents.type"
+import type { DocumentItem } from "@/types/documents.type";
 
 export interface FactureCardProps {
-  document: DocumentItem
+  document: Extract<DocumentItem, { document_type: "facture" }>
 }
 
 export function FactureCard(props: FactureCardProps) {
   const { document } = props
+  const { entities } = document
+  console.log(entities);
+
+  const formatValue = (value: unknown) => {
+    if (value === null || value === undefined || value === "") return "—"
+    return String(value)
+  }
+
+  const formatTva = () => {
+    const tva = entities.tva
+    if (tva === null || tva === undefined) return "—"
+    return `${tva}%`
+  }
 
   return (
-    <article className="border bg-muted/60 px-4 py-3 text-sm shadow-sm">
-      <h3 className="mb-2 font-bold text-lg underline underline-offset-4">Facture</h3>
-      <p>
-        <span className="font-semibold">Numéro :</span> {document.entities.numero_facture}
-      </p>
-      <p>
-        <span className="font-semibold">ID :</span> {document.id}
-      </p>
-      <p>
-        <span className="font-semibold">Nom :</span> {document.nom}
-      </p>
-      <p>
-        <span className="font-semibold">Date :</span> {document.date}
-      </p>
-      <p>
-        <span className="font-semibold">Type de fichier :</span> {document.document_type}
-      </p>
-      <p>
-        <span className="font-semibold">Siret :</span> {document.entities.siret}
-      </p>
-      <p>
-        <span className="font-semibold">Siren :</span> {document.entities.siren}
-      </p>
-      <p>
-        <span className="font-semibold">Montant HT :</span> {document.entities.montant_ht}
-      </p>
-      <p>
-        <span className="font-semibold">Montant TTC :</span> {document.entities.montant_ttc}
-      </p>
-      <p>
-        <span className="font-semibold">TVA :</span> {document.entities.tva}
-      </p>
-      {document.entities.iban ? (
-        <p>
-          <span className="font-semibold">IBAN :</span> {document.entities.iban}
+    <article className="rounded-md border bg-background p-4 space-y-4 text-sm">
+      <header className="mb-1">
+        <h2 className="text-sm font-semibold">Facture</h2>
+        <p className="text-xs text-muted-foreground">
+          ID : {document.id} · Nom : {document.nom}
         </p>
-      ) : null}
+      </header>
+
+      <section className="space-y-2">
+        <h2 className="text-muted-foreground">INFORMATION DU FOURNISSEUR</h2>
+
+        <article className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <p className="text-xs font-medium">NOM</p>
+            <p className="text-sm">{formatValue(entities.nom_fournisseur)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">SIRET</p>
+            <p className="text-sm">{formatValue(entities.siret_fournisseur ?? entities.siret)}</p>
+          </div>
+
+          <div className="space-y-1 sm:col-span-2">
+            <p className="text-xs font-medium">ADRESSE</p>
+            <p className="text-sm whitespace-pre-line">{formatValue(entities.adresse_fournisseur_adress)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">VILLE</p>
+            <p className="text-sm">{formatValue(entities.adresse_fournisseur_city)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">CODE POSTAL</p>
+            <p className="text-sm">{formatValue(entities.adresse_fournisseur_zip)}</p>
+          </div>
+
+        </article>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-muted-foreground">INFORMATION DE LA FACTURE</h2>
+
+        <article className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <p className="text-xs font-medium">NUMÉRO DE FACTURE</p>
+            <p className="text-sm">{formatValue(entities.numero_facture)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">DATE D'ÉMISSION</p>
+            <p className="text-sm">{formatValue(entities.date_emission)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">DATE D'ÉCHÉANCE</p>
+            <p className="text-sm">{formatValue(entities.date_echeance)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">MODE DE PAIEMENT</p>
+            <p className="text-sm">{formatValue(entities.mode_paiement)}</p>
+          </div>
+
+          <div className="space-y-1 sm:col-span-2">
+            <p className="text-xs font-medium">IBAN</p>
+            <p className="text-sm">{formatValue(entities.iban)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">MONTANT HT</p>
+            <p className="text-sm">{formatValue(entities.montant_ht)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">MONTANT TTC</p>
+            <p className="text-sm">{formatValue(entities.montant_ttc)}</p>
+          </div>
+
+          <div className="space-y-1 sm:col-span-2">
+            <p className="text-xs font-medium">TVA</p>
+            <p className="text-sm">{formatTva()}</p>
+          </div>
+        </article>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-muted-foreground">INFORMATION DU CLIENT</h2>
+
+        <article className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <p className="text-xs font-medium">NOM</p>
+            <p className="text-sm">{formatValue(entities.nom_client)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">NOM ENTREPRISE</p>
+            <p className="text-sm">{formatValue(entities.nom_entreprise_client)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">ADRESSE</p>
+            <p className="text-sm whitespace-pre-line">{formatValue(entities.adresse_client_adress)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">CODE POSTAL</p>
+            <p className="text-sm">{formatValue(entities.adresse_client_zip)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">VILLE</p>
+            <p className="text-sm">{formatValue(entities.adresse_client_city)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">SIRET CLIENT</p>
+            <p className="text-sm">{formatValue(entities.siret_client)}</p>
+          </div>
+
+        </article>
+      </section>
     </article>
   )
 }

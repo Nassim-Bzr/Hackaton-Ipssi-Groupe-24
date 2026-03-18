@@ -66,6 +66,12 @@ export function mapBackendAnalysisToPdfForm(file: File, data: any): PdfForm {
     ""
 
   const inferredNom: string = entities.nom_fournisseur || payload?.nom || ""
+  const inferredNomClient: string | undefined =
+    (prefill.nom_entreprise_client as string | undefined) ||
+    (entities.nom_entreprise_client as string | undefined) ||
+    (prefill.nom_client as string | undefined) ||
+    (entities.nom_client as string | undefined) ||
+    undefined
 
   const inferredDateEmissionRaw: unknown = prefill.date_emission ?? entities.date_emission
   const inferredDateEmission: string | undefined = normalizeDateForDateInput(inferredDateEmissionRaw)
@@ -121,6 +127,18 @@ export function mapBackendAnalysisToPdfForm(file: File, data: any): PdfForm {
   const inferredSiren: string | undefined = (entities.siren as string | undefined) || undefined
   const inferredNomFournisseur: string | undefined =
     (entities.nom_fournisseur as string | undefined) || undefined
+  const inferredAdresseFournisseur: string | undefined =
+    (prefill.adresse_fournisseur_adress as string | undefined) ||
+    (entities.adresse_fournisseur_adress as string | undefined) ||
+    undefined
+  const inferredCodePostalFournisseur: string | undefined =
+    (prefill.adresse_fournisseur_zip as string | undefined) ||
+    (entities.adresse_fournisseur_zip as string | undefined) ||
+    undefined
+  const inferredVilleFournisseur: string | undefined =
+    (prefill.adresse_fournisseur_city as string | undefined) ||
+    (entities.adresse_fournisseur_city as string | undefined) ||
+    undefined
   const inferredIban: string | undefined =
     (prefill.iban as string | undefined) || (entities.iban as string | undefined) || undefined
 
@@ -131,6 +149,7 @@ export function mapBackendAnalysisToPdfForm(file: File, data: any): PdfForm {
     file,
     id: inferredId,
     nom: inferredNom,
+    nomClient: inferredNomClient,
     dateEmission: inferredDateEmission,
     dateEcheance: inferredDateEcheance,
     dateExpiration: inferredDateExpiration,
@@ -144,6 +163,9 @@ export function mapBackendAnalysisToPdfForm(file: File, data: any): PdfForm {
     siretFournisseur: inferredSiretFournisseur,
     siren: inferredSiren,
     nomFournisseur: inferredNomFournisseur,
+    adresseFournisseur: inferredAdresseFournisseur,
+    codePostalFournisseur: inferredCodePostalFournisseur,
+    villeFournisseur: inferredVilleFournisseur,
     iban: inferredIban,
     documentType: inferredDocumentType,
     uploadState: "idle",

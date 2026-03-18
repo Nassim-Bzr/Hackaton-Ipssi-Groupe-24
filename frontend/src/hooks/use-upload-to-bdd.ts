@@ -60,6 +60,41 @@ function buildUploadFormData(variables: UploadToBddVariables): FormData {
   appendIfPresent(formData, "siren", (entities as { siren?: string }).siren)
   appendIfPresent(formData, "date_emission", (entities as { date_emission?: string }).date_emission)
   appendIfPresent(formData, "nom_fournisseur", (entities as { nom_fournisseur?: string }).nom_fournisseur)
+  appendIfPresent(
+    formData,
+    "nom_entreprise_client",
+    (entities as { nom_entreprise_client?: string }).nom_entreprise_client,
+  )
+  appendIfPresent(
+    formData,
+    "adresse_fournisseur_adress",
+    (entities as { adresse_fournisseur_adress?: string }).adresse_fournisseur_adress,
+  )
+  appendIfPresent(
+    formData,
+    "adresse_fournisseur_zip",
+    (entities as { adresse_fournisseur_zip?: string }).adresse_fournisseur_zip,
+  )
+  appendIfPresent(
+    formData,
+    "adresse_fournisseur_city",
+    (entities as { adresse_fournisseur_city?: string }).adresse_fournisseur_city,
+  )
+  appendIfPresent(
+    formData,
+    "adresse_client_adress",
+    (entities as { adresse_client_adress?: string }).adresse_client_adress,
+  )
+  appendIfPresent(
+    formData,
+    "adresse_client_zip",
+    (entities as { adresse_client_zip?: string }).adresse_client_zip,
+  )
+  appendIfPresent(
+    formData,
+    "adresse_client_city",
+    (entities as { adresse_client_city?: string }).adresse_client_city,
+  )
   appendIfPresent(formData, "iban", (entities as { iban?: string }).iban)
   appendIfPresent(formData, "montant_ht", (entities as { montant_ht?: number }).montant_ht)
   appendIfPresent(formData, "montant_ttc", (entities as { montant_ttc?: number }).montant_ttc)

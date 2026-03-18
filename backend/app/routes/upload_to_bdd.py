@@ -30,12 +30,20 @@ async def upload_document_to_bdd(
     montant_ttc: str | None = Form(default=None),
     tva: str | None = Form(default=None),
     nom_fournisseur: str | None = Form(default=None),
+    adresse_fournisseur_adress: str | None = Form(default=None),
+    adresse_fournisseur_zip: str | None = Form(default=None),
+    adresse_fournisseur_city: str | None = Form(default=None),
+    nom_client: str | None = Form(default=None),
+    nom_entreprise_client: str | None = Form(default=None),
     iban: str | None = Form(default=None),
     date_echeance: str | None = Form(default=None),
     numero_facture: str | None = Form(default=None),
     numero_devis: str | None = Form(default=None),
     siret_client: str | None = Form(default=None),
     mode_paiement: str | None = Form(default=None),
+    adresse_client_adress: str | None = Form(default=None),
+    adresse_client_zip: str | None = Form(default=None),
+    adresse_client_city: str | None = Form(default=None),
 ):
     """
     Effectue l'analyse complète puis enregistre le document en base.
@@ -71,12 +79,20 @@ async def upload_document_to_bdd(
         ("date_emission", date_emission),
         ("date_expiration", date_expiration),
         ("nom_fournisseur", nom_fournisseur),
+        ("adresse_fournisseur_adress", adresse_fournisseur_adress),
+        ("adresse_fournisseur_zip", adresse_fournisseur_zip),
+        ("adresse_fournisseur_city", adresse_fournisseur_city),
+        ("nom_client", nom_client),
+        ("nom_entreprise_client", nom_entreprise_client),
         ("iban", iban),
         ("date_echeance", date_echeance),
         ("numero_facture", numero_facture),
         ("numero_devis", numero_devis),
         ("siret_client", siret_client),
         ("mode_paiement", mode_paiement),
+        ("adresse_client_adress", adresse_client_adress),
+        ("adresse_client_zip", adresse_client_zip),
+        ("adresse_client_city", adresse_client_city),
     ]
     for cle, valeur in champs_simples:
         if valeur:

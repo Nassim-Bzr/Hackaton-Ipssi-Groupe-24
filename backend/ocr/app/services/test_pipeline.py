@@ -11,8 +11,8 @@ FAC-2026-0001
 Date : 15/03/2026
 Fournisseur : ACME Corp
 SIRET : 625 098 876 00018
-FACTURÉ À
-Client : Pichon
+Facturé à : Pichon
+29, rue Exemple, 75001 Paris
 SIRET : 501 357 107 00025
 IBAN : FR76 1234 5678 9012 3456 7890 123
 
@@ -28,6 +28,11 @@ DEVIS N° D-2026-007
 Date : 01/03/2026
 Fournisseur : BuildPro SARL
 SIRET : 98765432109876
+ADRESSÉ A
+Dupont
+À l'attention de : Alex du Pages
+29, avenue de Georges, 37647 Benard
+lorrainedavid@example.com
 Montant HT : 5000,00
 TVA : 1000,00
 Montant TTC : 6000,00
@@ -81,3 +86,45 @@ for nom, texte in textes:                                     # Parcourt chaque 
         assert (
             resultat.get("numero_devis") == "D-2026-007"
         ), f'numero_devis inattendu: {resultat.get("numero_devis")}'
+
+        assert (
+            resultat.get("nom_client") == "Alex du Pages"
+        ), f'nom_client (contact) inattendu: {resultat.get("nom_client")}'
+
+        assert (
+            resultat.get("nom_entreprise_client") == "Dupont"
+        ), f'nom_entreprise_client inattendu: {resultat.get("nom_entreprise_client")}'
+
+        assert (
+            resultat.get("adresse_client_adress") == "29, avenue de Georges"
+        ), f'adresse_client_adress inattendue: {resultat.get("adresse_client_adress")}'
+
+        assert (
+            resultat.get("adresse_client_zip") == "37647"
+        ), f'adresse_client_zip inattendue: {resultat.get("adresse_client_zip")}'
+
+        assert (
+            resultat.get("adresse_client_city") == "Benard"
+        ), f'adresse_client_city inattendue: {resultat.get("adresse_client_city")}'
+
+    # Validation minimale : le texte fictif "Facture" doit contenir le nom du client détecté
+    if nom == "Facture":
+        assert (
+            resultat.get("nom_client") == "Pichon"
+        ), f'nom_client (contact) inattendu: {resultat.get("nom_client")}'
+
+        assert (
+            resultat.get("nom_entreprise_client") == "Pichon"
+        ), f'nom_entreprise_client inattendu: {resultat.get("nom_entreprise_client")}'
+
+        assert (
+            resultat.get("adresse_client_adress") == "29, rue Exemple"
+        ), f'adresse_client_adress inattendue: {resultat.get("adresse_client_adress")}'
+
+        assert (
+            resultat.get("adresse_client_zip") == "75001"
+        ), f'adresse_client_zip inattendue: {resultat.get("adresse_client_zip")}'
+
+        assert (
+            resultat.get("adresse_client_city") == "Paris"
+        ), f'adresse_client_city inattendue: {resultat.get("adresse_client_city")}'
