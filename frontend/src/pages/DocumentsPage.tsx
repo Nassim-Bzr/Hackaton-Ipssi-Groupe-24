@@ -48,7 +48,7 @@ export function DocumentsPage() {
           </p>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-2">
           {documentsArray.map((document) => {
             if (document.document_type === "facture") {
               return <FactureCard key={document.id} document={document} />

@@ -14,6 +14,7 @@ export interface DocumentItem {
     numero_devis: string
     tva: number
     date_emission: string
+    date_echeance: string
     date_expiration: string
     nom_fournisseur: string
     iban: string
