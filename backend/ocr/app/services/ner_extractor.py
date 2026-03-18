@@ -248,6 +248,185 @@ def extraire_fournisseur(texte):
     return None
 
 
+def extraire_adresse_fournisseur(texte: str) -> str | None:
+    """
+    Extrait l'adresse du fournisseur en considérant que :
+    - le nom du fournisseur est sur la ligne après un label (ex: "Fournisseur : X")
+    - l'adresse est juste en dessous (plusieurs lignes possibles)
+    """
+    if not texte:
+        return None
+
+    lignes = [l.strip() for l in texte.splitlines()]
+
+    # Stop si on détecte un nouveau label de champs.
+    # On ancre au début de ligne car on veut éviter de couper au milieu d'une adresse.
+    stop_re = re.compile(
+        r"^(?:"
+        r"SIRET|SIREN|IBAN|TVA|MONTANT|DATE|MODE|TAUX|NUM(?:[ÉE]RO|ERO)|"
+        r"FACTUR[ÉE]\s*[:\-]?|ADRESS(?:[ÉE]{0,2})\s*[:\-]?|CLIENT|DESTINATAIRE|"
+        r"FOURNISSEUR|EMETTEUR|EMPLOYEUR|TITULAIRE"
+        r")\b",
+        re.IGNORECASE,
+    )
+
+    # On cherche la première occurrence d'un label fournisseur.
+    fournisseur_label_re = re.compile(
+        r"^(?:Fournisseur|Émetteur|Employeur|Titulaire)\s*[:\-]?\s*(.*)$",
+        re.IGNORECASE,
+    )
+
+    for i, ligne in enumerate(lignes):
+        if not ligne:
+            continue
+        m = fournisseur_label_re.match(ligne)
+        if not m:
+            continue
+
+        # Si le label contient déjà le nom, on commence l'adresse sur la ligne suivante.
+        # Sinon (rare), on prend la première ligne non vide comme nom, puis on commence juste après.
+        nom_sur_ligne = (m.group(1) or "").strip()
+        start_j = i + 1
+        if not nom_sur_ligne:
+            # Cas où le label est seul sur sa ligne.
+            for j in range(i + 1, min(i + 4, len(lignes))):
+                if lignes[j].strip():
+                    start_j = j + 1
+                    break
+
+        adresse_lignes: list[str] = []
+        started = False
+
+        for j in range(start_j, min(start_j + 12, len(lignes))):
+            l = lignes[j].strip()
+            if not l:
+                if started:
+                    break
+                continue
+
+            if stop_re.match(l):
+                break
+
+            adresse_lignes.append(l)
+            started = True
+
+        adresse = "\n".join(adresse_lignes).strip()
+        if adresse:
+            return adresse
+
+    # Fallback : certains documents (ex: devis) n'ont pas de label explicite du type
+    # "Fournisseur : ...". Dans ce cas, on considère que l'adresse est en dessous
+    # de la première ligne non vide (souvent la ligne contenant le nom + le numéro).
+    for i0 in range(len(lignes)):
+        if lignes[i0].strip():
+            start_j = None
+            # Cherche la prochaine ligne non vide.
+            for j0 in range(i0 + 1, min(i0 + 6, len(lignes))):
+                if lignes[j0].strip():
+                    start_j = j0
+                    break
+            if start_j is None:
+                return None
+
+            adresse_lignes: list[str] = []
+            started = False
+            for j in range(start_j, min(start_j + 12, len(lignes))):
+                l = lignes[j].strip()
+                if not l:
+                    if started:
+                        break
+                    continue
+
+                if stop_re.match(l):
+                    break
+
+                adresse_lignes.append(l)
+                started = True
+
+            adresse = "\n".join(adresse_lignes).strip()
+            if adresse:
+                return adresse
+            return None
+
+    return None
+
+
+def extraire_adresse_fournisseur_adress_zip_city(texte: str) -> dict[str, str | None]:
+    """
+    Découpe une adresse fournisseur OCR en :
+    - adress : lignes "rue / complément" (sans code postal + ville)
+    - zip : code postal (5 chiffres)
+    - city : ville
+    """
+    adresse_block = extraire_adresse_fournisseur(texte)
+    if not adresse_block:
+        return {
+            "adresse_fournisseur_adress": None,
+            "adresse_fournisseur_zip": None,
+            "adresse_fournisseur_city": None,
+        }
+
+    lignes = [l.strip() for l in adresse_block.splitlines() if l.strip()]
+    if not lignes:
+        return {
+            "adresse_fournisseur_adress": None,
+            "adresse_fournisseur_zip": None,
+            "adresse_fournisseur_city": None,
+        }
+
+    # On tente en priorité de trouver un couple "zip + ville" dans la dernière ligne.
+    # Ex: "75001 PARIS", "69001 LYON", etc.
+    # La dernière ligne de l'adresse peut contenir "Date : ..." juste après la ville
+    # (ex: "25120 Sainte Élise-les-Bains Date : 25/02/2026").
+    # On capture donc le city avant un prochain champ typique.
+    zip_city_re = re.compile(
+        r"\b(\d{5})\b\s*([A-Za-zÀ-ÖØ-öø-ÿ'’\- ]+?)\s*"
+        r"(?=\s*(?:Date\s*:|Valable\s+jusqu|TVA\s*:|SIRET|SIREN|IBAN|MONTANT|MODE|TAUX|"
+        r"FACTUR[ÉE]\s*[:\-]?|DEVIS|ADRESS(?:[ÉE]{0,2})\s*[:\-]?|$))",
+        re.IGNORECASE,
+    )
+
+    zip_code: str | None = None
+    city: str | None = None
+    zip_line_idx: int | None = None
+    zip_match_start: int | None = None
+    zip_line_text: str | None = None
+
+    for idx in range(len(lignes) - 1, -1, -1):
+        m = zip_city_re.search(lignes[idx])
+        if m:
+            zip_code = m.group(1)
+            city = m.group(2).strip()
+            zip_line_idx = idx
+            zip_match_start = m.start(1)
+            zip_line_text = lignes[idx]
+            break
+
+    if zip_line_idx is None:
+        # Fall back : pas de code postal détecté, on renvoie tout en "adress".
+        return {
+            "adresse_fournisseur_adress": "\n".join(lignes).strip() or None,
+            "adresse_fournisseur_zip": None,
+            "adresse_fournisseur_city": None,
+        }
+
+    # Rue/complement : on prend les lignes avant le code postal,
+    # puis on ajoute éventuellement la partie avant le zip sur la ligne du zip.
+    adress_lignes = lignes[:zip_line_idx]
+    if zip_match_start is not None and zip_line_text:
+        avant_zip = zip_line_text[:zip_match_start].strip().rstrip(" ,")
+        if avant_zip:
+            adress_lignes = [*adress_lignes, avant_zip] if adress_lignes else [avant_zip]
+
+    adress = "\n".join(adress_lignes).strip() or None
+
+    return {
+        "adresse_fournisseur_adress": adress,
+        "adresse_fournisseur_zip": zip_code,
+        "adresse_fournisseur_city": city,
+    }
+
+
 def extraire_numero_fiscal(texte):
     # Cherche le numéro fiscal : 13 chiffres précédés de "fiscal" ou "SPI"
     match = re.search(r'(?:fiscal|SPI|numéro)[^\d]*(\d{13})', texte, re.IGNORECASE)
@@ -325,6 +504,7 @@ def extraire_entites(texte):
 
         base.update({
             "nom_fournisseur": extraire_fournisseur(texte),
+            **extraire_adresse_fournisseur_adress_zip_city(texte),
             "nom_client": extraire_client(texte),
             "numero_facture":  extraire_numero_facture(texte),
             "date_echeance":   extraire_date_echeance(texte),
@@ -347,6 +527,7 @@ def extraire_entites(texte):
 
         base.update({
             "nom_fournisseur": extraire_fournisseur(texte),
+            **extraire_adresse_fournisseur_adress_zip_city(texte),
             "nom_client": extraire_client(texte),
             "numero_devis": extraire_numero_devis(texte),
             "montant_ht":      montant_ht,
