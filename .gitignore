@@ -21,3 +21,6 @@ data/gold/
 
 # OS
 .DS_Store
+
+# IDE / outils locaux
+.vscode/
