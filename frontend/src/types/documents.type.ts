@@ -6,10 +6,15 @@ export type DevisEntities = {
   date_expiration: string
   montant_ht: number
   montant_ttc: number
-  nom_client: string
+  nom_client: string | null
+  nom_entreprise_client: string | null
   nom_fournisseur: string
   numero_devis: string
   tva: number
+
+  adresse_client_adress: string | null
+  adresse_client_zip: string | null
+  adresse_client_city: string | null
 
   // D'après tes exemples, certains champs peuvent être `null` (ex: siren).
   siren: string | null
@@ -29,10 +34,15 @@ export type FactureEntities = {
   mode_paiement: string
   montant_ht: number
   montant_ttc: number
-  nom_client: string
+  nom_client: string | null
+  nom_entreprise_client: string | null
   nom_fournisseur: string
   numero_facture: string
   tva: number
+
+  adresse_client_adress: string | null
+  adresse_client_zip: string | null
+  adresse_client_city: string | null
 
   siren: string | null
   siret: string

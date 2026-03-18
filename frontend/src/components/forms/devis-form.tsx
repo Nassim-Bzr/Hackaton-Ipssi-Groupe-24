@@ -30,6 +30,10 @@ export function DevisForm({ devis, onUpload, isUploading }: DevisFormProps) {
       adresse_fournisseur_adress: "",
       adresse_fournisseur_zip: "",
       adresse_fournisseur_city: "",
+      nom_entreprise_client: "",
+      adresse_client_adress: "",
+      adresse_client_zip: "",
+      adresse_client_city: "",
       nom_client: "",
       numero_devis: "",
       siren: "",
@@ -182,12 +186,50 @@ export function DevisForm({ devis, onUpload, isUploading }: DevisFormProps) {
         <h2 className="text-muted-foreground">INFORMATION DU CLIENT</h2>
 
         <article className="grid grid-cols-2 gap-3">
-          <div className="space-y-1 sm:col-span-2">
+          <div className="space-y-1">
             <Label className="text-xs font-medium">NOM</Label>
             <Input
               value={entities.nom_client ?? ""}
-              onChange={(e) => setEntities((prev) => ({ ...prev, nom_client: e.target.value }))}
+              onChange={(e) =>
+                setEntities((prev) => ({ ...prev, nom_client: e.target.value }))
+              }
               placeholder="Ex: John Doe"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">NOM ENTREPRISE</Label>
+            <Input
+              value={entities.nom_entreprise_client ?? ""}
+              onChange={(e) => setEntities((prev) => ({ ...prev, nom_entreprise_client: e.target.value }))}
+              placeholder="Ex: John Doe"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">ADRESSE</Label>
+            <Input
+              value={entities.adresse_client_adress ?? ""}
+              onChange={(e) => setEntities((prev) => ({ ...prev, adresse_client_adress: e.target.value }))}
+              placeholder="Ex: 29, avenue de Georges"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">CODE POSTAL</Label>
+            <Input
+              value={entities.adresse_client_zip ?? ""}
+              onChange={(e) => setEntities((prev) => ({ ...prev, adresse_client_zip: e.target.value }))}
+              placeholder="Ex: 37647"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">VILLE</Label>
+            <Input
+              value={entities.adresse_client_city ?? ""}
+              onChange={(e) => setEntities((prev) => ({ ...prev, adresse_client_city: e.target.value }))}
+              placeholder="Ex: Benard"
             />
           </div>
         </article>

@@ -21,6 +21,10 @@ class DocumentEntities(BaseModel):
     adresse_fournisseur_zip: Optional[str] = None
     adresse_fournisseur_city: Optional[str] = None
     nom_client: Optional[str] = None
+    nom_entreprise_client: Optional[str] = None
+    adresse_client_adress: Optional[str] = None
+    adresse_client_zip: Optional[str] = None
+    adresse_client_city: Optional[str] = None
     iban: Optional[str] = None
 
 

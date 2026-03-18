@@ -176,32 +176,54 @@ def extraire_client(texte: str) -> str | None:
     if not texte:
         return None
 
-    # On priorise "FACTURÉ À"/"FACTURE A" car c'est le label le plus spécifique.
-    marker_facture = re.search(r"FACTUR[ÉE]\s+À|FACTURE\s+A|FACTURE\s+À", texte, re.IGNORECASE)
-    # Pour les devis, l'OCR renvoie souvent "ADRESSÉ A" (avec accent variable),
-    # parfois sans espace ou avec une variante (ADRESSE/ADRESSÉ/ADRESSÉE...).
-    marker_adresse = re.search(
+    lignes = [l.strip() for l in texte.splitlines() if l.strip()]
+    if not lignes:
+        return None
+
+    # 1) Devis : ton OCR a toujours `À l'attention de : ...`.
+    # Le nom de l'entreprise du client est la ligne juste avant cette mention.
+    attention_re = re.compile(r"À\s*l'attention\s*de\s*[:\-]?", re.IGNORECASE)
+    for idx, l in enumerate(lignes):
+        if attention_re.search(l):
+            # Remonte jusqu'à trouver la première ligne "significative" avant l'attention.
+            j = idx - 1
+            while j >= 0 and not lignes[j].strip():
+                j -= 1
+            if j < 0:
+                break
+
+            candidat = lignes[j].strip()
+            # Si l'OCR encode "Client : X", on extrait X
+            m = re.match(r"^(?:Facturé\s*À|Client|Destinataire)\s*[:\-]?\s*(.+?)\s*$", candidat, re.IGNORECASE)
+            return (m.group(1).strip() if m else candidat) or None
+
+    # 2) Facture : extraction à partir de `Facturé à : <Nom>`
+    facture_re = re.compile(r"FACTUR[ÉE]\s+À\s*[:\-]?\s*(.+)$", re.IGNORECASE)
+    for l in lignes:
+        m = facture_re.search(l)
+        if m:
+            candidat = m.group(1).strip()
+            if candidat:
+                return candidat
+
+    # 3) Fallback (ancien comportement) : `FACTURÉ À`/`FACTURE A` ou `ADRESSÉ A`
+    marker_facture_ancien = re.search(r"FACTUR[ÉE]\s+À|FACTURE\s+A|FACTURE\s+À", texte, re.IGNORECASE)
+    marker_adresse_ancien = re.search(
         r"ADRESS(?:[ÉE]{0,2})\s*[:\-]?\s*A|ADRESS(?:[ÉE]{0,2})\s*[:\-]?\s*À",
         texte,
         re.IGNORECASE,
     )
-    marker = marker_facture or marker_adresse
+    marker = marker_facture_ancien or marker_adresse_ancien
     if not marker:
         return None
 
     apres = texte[marker.end() :]
 
-    # On prend la première ligne "significative" après le marqueur.
-    # Si une ligne est sous la forme "Client : X", on capture directement X.
-    # Les lignes qu'on ne veut presque jamais confondre avec un "nom".
-    # On utilise une regex pour gérer correctement les accents OCR.
     skip_re = re.compile(
         r"^(?:SIRET|SIREN|IBAN|TVA|MONTANT|DATE|(?:[ÉE]CH[ÉE]ANCE|ECHEANCE)|MODE|TAUX|NUM(?:[ÉE]RO|ERO))",
         re.IGNORECASE,
     )
 
-    # Si le nom client est sur la même ligne que d'autres champs (rare mais déjà vu OCR),
-    # on coupe avant les prochains labels typiques.
     cut_apres_re = re.compile(
         r"\b(?:SIRET|SIREN|IBAN|TVA|MONTANT|DATE|MODE|TAUX|NUM(?:[ÉE]RO|ERO)|(?:[ÉE]CH[ÉE]ANCE|ECHEANCE))\b",
         re.IGNORECASE,
@@ -211,25 +233,174 @@ def extraire_client(texte: str) -> str | None:
         l = ligne.strip()
         if not l:
             continue
-
         if skip_re.match(l):
             continue
-
-        # Cas le plus fréquent dans vos tests OCR: "Client : Pichon"
         m = re.match(r"^(?:Client|Destinataire)\s*[:\-]?\s*(.+?)\s*$", l, re.IGNORECASE)
         if m:
-            nom = m.group(1).strip()
-            return nom or None
-
-        # Fallback: si c'est une autre ligne texte (souvent le bloc commence par le nom),
-        # on retourne le texte avant d'éventuels autres labels.
+            return m.group(1).strip() or None
         cut = cut_apres_re.search(l)
         if cut:
-            candidat = l[: cut.start()].strip()
-            return candidat or None
+            return l[: cut.start()].strip() or None
         return l
 
     return None
+
+
+def extraire_nom_client_contact(texte: str) -> str | None:
+    """
+    Extrait le nom réel (personne/contacts) du client depuis l'OCR.
+
+    Hypothèse métier :
+    - Le nom apparaît après le marqueur `À l'attention de :`.
+    - Le nom est généralement sur la même ligne, sinon sur la ligne suivante.
+    """
+    if not texte:
+        return None
+
+    lines = [l.strip() for l in texte.splitlines()]
+    if not lines:
+        return None
+
+    attention_line_re = re.compile(
+        r"À\s*l'attention\s*de\s*[:\-]?\s*(.*)$",
+        re.IGNORECASE,
+    )
+
+    for i, line in enumerate(lines):
+        if not line:
+            continue
+
+        m = attention_line_re.search(line)
+        if not m:
+            continue
+
+        # Cas "À l'attention de : Tom" (nom sur la même ligne)
+        same_line = (m.group(1) or "").strip()
+        if same_line:
+            if "@" in same_line:
+                same_line = same_line.split("@", 1)[0].strip()
+            return same_line or None
+
+        # Cas "À l'attention de :" puis nom sur la ligne suivante
+        for j in range(i + 1, len(lines)):
+            candidate = lines[j].strip()
+            if not candidate:
+                continue
+            if "@" in candidate:
+                break
+            if re.match(
+                r"^(?:SIRET|SIREN|IBAN|TVA|MONTANT|DATE|MODE|TAUX|NUM(?:[ÉE]RO|ERO)|"
+                r"FACTUR[ÉE]|DEVIS|ADRESS(?:[ÉE]{0,2})|FOURNISSEUR|EMETTEUR|CLIENT|DESTINATAIRE)",
+                candidate,
+                re.IGNORECASE,
+            ):
+                break
+            return candidate
+
+    return None
+
+
+def extraire_adresse_client_adress_zip_city(texte: str) -> dict[str, str | None]:
+    """
+    Découpe une adresse client OCR en :
+    - adresse_client_adress : lignes "rue / complément" (sans code postal + ville)
+    - adresse_client_zip : code postal (5 chiffres)
+    - adresse_client_city : ville
+
+    Hypothèse OCR (devis) : l'adresse suit la ligne `À l'attention de : ...`.
+    """
+    if not texte:
+        return {
+            "adresse_client_adress": None,
+            "adresse_client_zip": None,
+            "adresse_client_city": None,
+        }
+
+    raw_lines = texte.splitlines()
+    # Trouver la ligne qui contient `À l'attention de :`
+    attention_re = re.compile(r"À\s*l'attention\s*de\s*[:\-]?", re.IGNORECASE)
+    attention_idx = None
+    for idx, raw in enumerate(raw_lines):
+        if attention_re.search(raw):
+            attention_idx = idx
+            break
+
+    start_idx = None
+    if attention_idx is not None:
+        # On démarre juste après la ligne d'attention.
+        start_idx = attention_idx + 1
+    else:
+        # Fallback facture : on tente après une ligne `Facturé à : ...`
+        facture_line_re = re.compile(r"FACTUR[ÉE]\s+À\s*[:\-]?", re.IGNORECASE)
+        for idx, raw in enumerate(raw_lines):
+            if facture_line_re.search(raw):
+                start_idx = idx + 1
+                break
+
+    if start_idx is None:
+        return {
+            "adresse_client_adress": None,
+            "adresse_client_zip": None,
+            "adresse_client_city": None,
+        }
+
+    stop_re = re.compile(
+        r"^(?:SIRET|SIREN|IBAN|TVA|MONTANT|DATE|(?:[ÉE]CH[ÉE]ANCE|ECHEANCE)|MODE|TAUX|NUM(?:[ÉE]RO|ERO)|"
+        r"FACTUR[ÉE]\s*[:\-]?|DEVIS|ADRESS(?:[ÉE]{0,2})|FOURNISSEUR|EMETTEUR|CLIENT|DESTINATAIRE|TAUX|@)",
+        re.IGNORECASE,
+    )
+
+    collected: list[str] = []
+    for raw in raw_lines[start_idx:]:
+        l = raw.strip()
+        if not l:
+            continue
+
+        if "@" in l:
+            break
+        if stop_re.match(l):
+            break
+
+        collected.append(l)
+        if len(collected) >= 8:
+            break
+
+    if not collected:
+        return {
+            "adresse_client_adress": None,
+            "adresse_client_zip": None,
+            "adresse_client_city": None,
+        }
+
+    zip_city_re = re.compile(
+        r"\b(\d{5})\b\s*([A-Za-zÀ-ÖØ-öø-ÿ'’\- ]+?)\s*$",
+        re.IGNORECASE,
+    )
+
+    last = collected[-1]
+    m = zip_city_re.search(last)
+    if not m:
+        return {
+            "adresse_client_adress": "\n".join(collected).strip() or None,
+            "adresse_client_zip": None,
+            "adresse_client_city": None,
+        }
+
+    zip_code = m.group(1)
+    city = m.group(2).strip()
+
+    # Préserver la partie "rue" qui peut être sur la même ligne que le zip.
+    before_zip = last[: m.start(1)].strip().rstrip(" ,")
+    adress_lines = collected[:-1]
+    if before_zip:
+        adress_lines = [*adress_lines, before_zip]
+
+    address_adress = "\n".join(adress_lines).strip() or None
+    return {
+        "adresse_client_adress": address_adress,
+        "adresse_client_zip": zip_code,
+        "adresse_client_city": city,
+    }
 
 
 def extraire_fournisseur(texte):
@@ -505,7 +676,10 @@ def extraire_entites(texte):
         base.update({
             "nom_fournisseur": extraire_fournisseur(texte),
             **extraire_adresse_fournisseur_adress_zip_city(texte),
-            "nom_client": extraire_client(texte),
+            # nom_client = nom réel (personne/contact), nom_entreprise_client = nom entreprise
+            "nom_client": extraire_nom_client_contact(texte) or extraire_client(texte),
+            "nom_entreprise_client": extraire_client(texte),
+            **extraire_adresse_client_adress_zip_city(texte),
             "numero_facture":  extraire_numero_facture(texte),
             "date_echeance":   extraire_date_echeance(texte),
             "montant_ht":      montant_ht,
@@ -528,7 +702,10 @@ def extraire_entites(texte):
         base.update({
             "nom_fournisseur": extraire_fournisseur(texte),
             **extraire_adresse_fournisseur_adress_zip_city(texte),
-            "nom_client": extraire_client(texte),
+            # nom_client = nom réel (personne/contact), nom_entreprise_client = nom entreprise
+            "nom_client": extraire_nom_client_contact(texte) or extraire_client(texte),
+            "nom_entreprise_client": extraire_client(texte),
+            **extraire_adresse_client_adress_zip_city(texte),
             "numero_devis": extraire_numero_devis(texte),
             "montant_ht":      montant_ht,
             "montant_ttc":     montant_ttc,

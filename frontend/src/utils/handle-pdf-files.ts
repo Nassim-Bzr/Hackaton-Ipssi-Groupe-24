@@ -67,6 +67,8 @@ export function mapBackendAnalysisToPdfForm(file: File, data: any): PdfForm {
 
   const inferredNom: string = entities.nom_fournisseur || payload?.nom || ""
   const inferredNomClient: string | undefined =
+    (prefill.nom_entreprise_client as string | undefined) ||
+    (entities.nom_entreprise_client as string | undefined) ||
     (prefill.nom_client as string | undefined) ||
     (entities.nom_client as string | undefined) ||
     undefined

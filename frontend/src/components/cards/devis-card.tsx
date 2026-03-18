@@ -58,11 +58,6 @@ export function DevisCard(props: DevisCardProps) {
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs font-medium">SIREN</p>
-            <p className="text-sm">{formatValue(entities.siren)}</p>
-          </div>
-
-          <div className="space-y-1">
             <p className="text-xs font-medium">SIRETS (DÉTECTÉS)</p>
             <p className="text-sm">
               {Array.isArray(entities.sirets) && entities.sirets.length > 0 ? entities.sirets.join(", ") : "—"}
@@ -111,20 +106,31 @@ export function DevisCard(props: DevisCardProps) {
         <h2 className="text-muted-foreground">INFORMATION DU CLIENT</h2>
 
         <article className="grid grid-cols-2 gap-3">
-          <div className="space-y-1 sm:col-span-2">
+          <div className="space-y-1">
             <p className="text-xs font-medium">NOM</p>
             <p className="text-sm">{formatValue(entities.nom_client)}</p>
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs font-medium">SIRET CLIENT</p>
-            <p className="text-sm">{formatValue(entities.siret_client)}</p>
+            <p className="text-xs font-medium">NOM ENTREPRISE</p>
+            <p className="text-sm">{formatValue(entities.nom_entreprise_client)}</p>
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs font-medium">SIRET FOURNISSEUR</p>
-            <p className="text-sm">{formatValue(entities.siret_fournisseur ?? entities.siret)}</p>
+            <p className="text-xs font-medium">ADRESSE</p>
+            <p className="text-sm whitespace-pre-line">{formatValue(entities.adresse_client_adress)}</p>
           </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">CODE POSTAL</p>
+            <p className="text-sm">{formatValue(entities.adresse_client_zip)}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium">VILLE</p>
+            <p className="text-sm">{formatValue(entities.adresse_client_city)}</p>
+          </div>
+
         </article>
       </section>
     </article>

@@ -10,7 +10,11 @@ export interface Devis {
     adresse_fournisseur_adress?: string
     adresse_fournisseur_zip?: string
     adresse_fournisseur_city?: string
-    nom_client: string
+    nom_client?: string
+    nom_entreprise_client: string
+    adresse_client_adress?: string
+    adresse_client_zip?: string
+    adresse_client_city?: string
     numero_devis: string
     siren: string
     siret: string
