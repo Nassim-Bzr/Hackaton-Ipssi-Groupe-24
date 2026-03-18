@@ -14,6 +14,65 @@ from config.settings import UPLOAD_DIR, VALIDATION_SERVICE_URL
 
 router = APIRouter()
 
+
+""" Route utilisée pour sauvegarder un formulaire validé par l'utilisateur en base """
+@router.post("/upload-to-bdd", status_code=201)
+async def upload_to_bdd(
+    file: UploadFile = File(...),
+    id: str = Form(...),
+    nom: str = Form(...),
+    siret: str = Form(None),
+    siren: str = Form(None),
+    date_emission: str = Form(None),
+    date_echeance: str = Form(None),
+    date_expiration: str = Form(None),
+    numero_facture: str = Form(None),
+    mode_paiement: str = Form(None),
+    montant_ht: float = Form(None),
+    montant_ttc: float = Form(None),
+    tva: float = Form(None),
+    nom_fournisseur: str = Form(None),
+    iban: str = Form(None),
+    siret_client: str = Form(None),
+    siret_fournisseur: str = Form(None),
+):
+    doc_id = str(uuid.uuid4())
+    file_bytes = await file.read()
+
+    entities = {k: v for k, v in {
+        "siret": siret,
+        "siren": siren,
+        "date_emission": date_emission,
+        "date_echeance": date_echeance,
+        "date_expiration": date_expiration,
+        "numero_facture": numero_facture,
+        "mode_paiement": mode_paiement,
+        "montant_ht": montant_ht,
+        "montant_ttc": montant_ttc,
+        "tva": tva,
+        "nom_fournisseur": nom_fournisseur,
+        "iban": iban,
+        "siret_client": siret_client,
+        "siret_fournisseur": siret_fournisseur,
+    }.items() if v is not None}
+
+    from app.services.mongo_service import save_document
+    save_document({
+        "doc_id": doc_id,
+        "id": id,
+        "nom": nom,
+        "filename": file.filename,
+        "entities": entities,
+    })
+
+    return {
+        "doc_id": doc_id,
+        "id": id,
+        "nom": nom,
+        "entities": entities,
+        "message": "Document sauvegardé avec succès.",
+    }
+
 """ Route utilisé pour analyser le document et pré-remplir les formulaires """
 @router.post("/upload", status_code=201)
 async def upload_document(

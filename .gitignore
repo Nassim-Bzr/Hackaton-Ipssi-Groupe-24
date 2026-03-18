@@ -2,22 +2,21 @@
 __pycache__/
 *.py[cod]
 *.pyo
-.venv/
+*.pyd
 venv/
-*.egg-info/
+.venv/
+.env
 
 # Node
 node_modules/
 dist/
 
-# Env
-.env
-.env.*
-
-# Data (générés localement)
+# Data
 data/bronze/
 data/silver/
 data/gold/
 
-# OS
+# Divers
+*.log
 .DS_Store
+uploads/
