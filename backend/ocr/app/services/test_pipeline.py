@@ -28,6 +28,8 @@ DEVIS N° D-2026-007
 Date : 01/03/2026
 Fournisseur : BuildPro SARL
 SIRET : 98765432109876
+ADRESSÉ A
+Dupont
 Montant HT : 5000,00
 TVA : 1000,00
 Montant TTC : 6000,00
@@ -81,6 +83,10 @@ for nom, texte in textes:                                     # Parcourt chaque 
         assert (
             resultat.get("numero_devis") == "D-2026-007"
         ), f'numero_devis inattendu: {resultat.get("numero_devis")}'
+
+        assert (
+            resultat.get("nom_client") == "Dupont"
+        ), f'nom_client inattendu: {resultat.get("nom_client")}'
 
     # Validation minimale : le texte fictif "Facture" doit contenir le nom du client détecté
     if nom == "Facture":

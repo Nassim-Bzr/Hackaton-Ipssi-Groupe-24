@@ -7,7 +7,7 @@ export interface Devis {
     montant_ttc: number
     tva: number
     nom_fournisseur: string
-    nom_client?: string
+    nom_client: string
     numero_devis: string
     siren: string
     siret: string

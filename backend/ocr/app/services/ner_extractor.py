@@ -171,14 +171,20 @@ def extraire_siret_fournisseur_client(texte: str) -> dict:
 def extraire_client(texte: str) -> str | None:
     """
     Extrait le nom du client depuis la zone située après "FACTURÉ À"/"FACTURE A"
-    (ou variantes comme "ADRESSE A" selon le format OCR).
+    (ou variantes comme "ADRESSE A"/"ADRESSÉ A" selon le format OCR).
     """
     if not texte:
         return None
 
     # On priorise "FACTURÉ À"/"FACTURE A" car c'est le label le plus spécifique.
     marker_facture = re.search(r"FACTUR[ÉE]\s+À|FACTURE\s+A|FACTURE\s+À", texte, re.IGNORECASE)
-    marker_adresse = re.search(r"ADRESSE\s+A|ADRESSE\s+À", texte, re.IGNORECASE)
+    # Pour les devis, l'OCR renvoie souvent "ADRESSÉ A" (avec accent variable),
+    # parfois sans espace ou avec une variante (ADRESSE/ADRESSÉ/ADRESSÉE...).
+    marker_adresse = re.search(
+        r"ADRESS(?:[ÉE]{0,2})\s*[:\-]?\s*A|ADRESS(?:[ÉE]{0,2})\s*[:\-]?\s*À",
+        texte,
+        re.IGNORECASE,
+    )
     marker = marker_facture or marker_adresse
     if not marker:
         return None
@@ -191,6 +197,13 @@ def extraire_client(texte: str) -> str | None:
     # On utilise une regex pour gérer correctement les accents OCR.
     skip_re = re.compile(
         r"^(?:SIRET|SIREN|IBAN|TVA|MONTANT|DATE|(?:[ÉE]CH[ÉE]ANCE|ECHEANCE)|MODE|TAUX|NUM(?:[ÉE]RO|ERO))",
+        re.IGNORECASE,
+    )
+
+    # Si le nom client est sur la même ligne que d'autres champs (rare mais déjà vu OCR),
+    # on coupe avant les prochains labels typiques.
+    cut_apres_re = re.compile(
+        r"\b(?:SIRET|SIREN|IBAN|TVA|MONTANT|DATE|MODE|TAUX|NUM(?:[ÉE]RO|ERO)|(?:[ÉE]CH[ÉE]ANCE|ECHEANCE))\b",
         re.IGNORECASE,
     )
 
@@ -209,7 +222,11 @@ def extraire_client(texte: str) -> str | None:
             return nom or None
 
         # Fallback: si c'est une autre ligne texte (souvent le bloc commence par le nom),
-        # on retourne telle quelle.
+        # on retourne le texte avant d'éventuels autres labels.
+        cut = cut_apres_re.search(l)
+        if cut:
+            candidat = l[: cut.start()].strip()
+            return candidat or None
         return l
 
     return None

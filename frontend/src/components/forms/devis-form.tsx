@@ -26,6 +26,7 @@ export function DevisForm({ devis, onUpload, isUploading }: DevisFormProps) {
       montant_ttc: 0,
       tva: 0,
       nom_fournisseur: "",
+      nom_client: "",
       numero_devis: "",
       siren: "",
       siret: "",
@@ -74,6 +75,16 @@ export function DevisForm({ devis, onUpload, isUploading }: DevisFormProps) {
             type="date"
             value={entities.date_emission ?? ""}
             onChange={(e) => setEntities((prev) => ({ ...prev, date_emission: e.target.value }))}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs font-medium">CLIENT</p>
+          <Input
+            type="text"
+            placeholder="Ex: John Doe"
+            value={entities.nom_client ?? ""}
+            onChange={(e) => setEntities((prev) => ({ ...prev, nom_client: e.target.value }))}
           />
         </div>
 
