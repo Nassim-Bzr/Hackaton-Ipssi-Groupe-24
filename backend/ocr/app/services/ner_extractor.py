@@ -84,6 +84,26 @@ def extraire_numero_facture(texte: str) -> str | None:
     return numero or None
 
 
+def extraire_numero_devis(texte: str) -> str | None:
+    """
+    Pour extraire un numéro de devis près de "DEVIS" / "Devis N°" / "Devis No".
+    Accepte les retours à la ligne (ex: "DEVIS N°\\nD-2026-007").
+    """
+    if not texte:
+        return None
+
+    match = re.search(
+        r"(?:DEVIS)\s*(?:N[°o]|No|#)?\s*[:\-]?\s*([A-Z0-9][A-Z0-9-]{3,})",
+        texte,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+
+    numero = match.group(1).strip()
+    return numero or None
+
+
 def extraire_mode_paiement(texte: str) -> str | None:
     # pour extraire le mode de règlement  si il se trouve dans la facture 
     if not texte:
@@ -218,6 +238,7 @@ def extraire_entites(texte):
     elif type_doc == "devis":                          # Champs spécifiques à un devis
         base.update({
             "nom_fournisseur": extraire_fournisseur(texte),
+            "numero_devis": extraire_numero_devis(texte),
             "montant_ht":      extraire_montant(texte, "HT"),
             "montant_ttc":     extraire_montant(texte, "TTC"),
             "tva":             extraire_montant(texte, "TVA"),
