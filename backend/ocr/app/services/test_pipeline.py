@@ -4,17 +4,23 @@ import json
 from ner_extractor import extraire_entites     # On importe uniquement la fonction à teser 
 
 
-# TEXTE FICTIF qui simule ce que PaddleOCR aurait lu sur une vraie facture 
+# TEXTE FICTIF qui simule ce que l'OCR aurait lu sur une vraie facture
 texte_facture = """
-FACTURE N° 2026-042
+FACTURE N°
+FAC-2026-0001
 Date : 15/03/2026
 Fournisseur : ACME Corp
-SIRET : 12345678901234
+SIRET : 625 098 876 00018
+FACTURÉ À
+Client : Pichon
+SIRET : 501 357 107 00025
 IBAN : FR76 1234 5678 9012 3456 7890 123
 
 Montant HT : 1000,00
 TVA : 200,00
 Montant TTC : 1200,00
+Échéance : 23/03/2026
+Mode de règlement : Carte bancaire
 """
 
 texte_devis = """

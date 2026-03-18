@@ -5,6 +5,28 @@ from ocr.app.services.ocr_engine import extraire_texte
 from ocr.app.services.ner_extractor import extraire_entites
 
 
+def construire_prefill(doc_id: str, document_type: str, entities: dict) -> dict:
+    """
+    Construit un objet stable destiné au frontend pour pré-remplir les formulaires.
+    Les valeurs peuvent être None si non détectées.
+    """
+    return {
+        "doc_id": doc_id,
+        "document_type": document_type,
+        "numero_facture": entities.get("numero_facture"),
+        "date_emission": entities.get("date_emission"),
+        "date_echeance": entities.get("date_echeance"),
+        "montant_ht": entities.get("montant_ht"),
+        "tva": entities.get("tva"),
+        "montant_ttc": entities.get("montant_ttc"),
+        "iban": entities.get("iban"),
+        "mode_paiement": entities.get("mode_paiement"),
+        "siret_fournisseur": entities.get("siret_fournisseur"),
+        "siret_client": entities.get("siret_client"),
+        "sirets": entities.get("sirets", []),
+    }
+
+
 def traiter_document(chemin_fichier: str, doc_id: str | None = None) -> dict:
     """Reçoit un chemin de fichier PDF et retourne le dict d'extraction complet."""
     texte, score = extraire_texte(chemin_fichier)
@@ -12,9 +34,10 @@ def traiter_document(chemin_fichier: str, doc_id: str | None = None) -> dict:
 
     nom_fichier = os.path.basename(chemin_fichier)
     type_doc = entites.pop("document_type", "inconnu")
+    resolved_doc_id = doc_id or str(uuid.uuid4())
 
     return {
-        "doc_id": doc_id or str(uuid.uuid4()),
+        "doc_id": resolved_doc_id,
         "document_type": type_doc,
         "ocr_text": texte,
         "metadata": {
@@ -23,4 +46,5 @@ def traiter_document(chemin_fichier: str, doc_id: str | None = None) -> dict:
             "source_file": nom_fichier,
         },
         "entities": entites,
+        "prefill": construire_prefill(resolved_doc_id, type_doc, entites),
     }

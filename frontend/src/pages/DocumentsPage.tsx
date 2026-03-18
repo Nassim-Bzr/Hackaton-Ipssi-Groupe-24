@@ -1,36 +1,12 @@
-import { DocumentCard } from "@/components/cards/document-card"
-import type { DocumentResponse } from "@/types/documents.type"
-import { useEffect, useState } from "react"
+import { DevisCard } from "@/components/cards/devis-card"
+import { FactureCard } from "@/components/cards/facture-card"
+import { useGetDocuments } from "@/hooks/use-get-documents"
 
 export function DocumentsPage() {
-  const [documents, setDocuments] = useState<DocumentResponse>()
-  const [loading, setLoading] = useState<boolean>(true)
 
-  useEffect(() => {
-    const fetchDocuments = async () => {
-      setLoading(true)
-      try {
-        const response = await fetch("http://localhost:3000/documents")
+  const { documents, isPending } = useGetDocuments()
 
-        if (!response.ok) {
-          throw new Error(`Erreur lors de la récupération des documents (${response.status})`)
-        }
-
-        const data: DocumentResponse = await response.json()
-        console.log(data)
-        setDocuments(data)
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchDocuments()
-  }, [])
-
-  // Pendant le chargement, on affiche un état de chargement
-  if (loading) {
+  if (isPending) {
     return (
       <main className="mt-14">
         <div className="flex w-full flex-col gap-6">
@@ -43,10 +19,11 @@ export function DocumentsPage() {
     )
   }
 
+  // Pour éviter de faire documents.documents on transforme le type DocumentResponse en DocumentItem[]
   const documentsArray = Array.isArray(documents?.documents) ? documents!.documents : []
 
   // Si aucun document trouvé, on affiche un message
-  if (!loading && documentsArray.length === 0) {
+  if (documentsArray.length === 0) {
     return (
       <main className="mt-14">
         <div className="flex w-full flex-col gap-6">
@@ -72,21 +49,13 @@ export function DocumentsPage() {
         </header>
 
         <section className="grid gap-4 md:grid-cols-3">
-          {documentsArray.map((document) => (
-            <DocumentCard
-              key={document.id}
-              id={document.id}
-              nom={document.nom}
-              documentType={document.document_type}
-              date={document.date}
-              siret={document.entities.siret}
-              siren={document.entities.siren}
-              montantHt={document.entities.montant_ht}
-              montantTtc={document.entities.montant_ttc}
-              tva={document.entities.tva}
-              iban={document.entities.iban}
-            />
-          ))}
+          {documentsArray.map((document) => {
+            if (document.document_type === "facture") {
+              return <FactureCard key={document.id} document={document} />
+            }
+
+            return <DevisCard key={document.id} document={document} />
+          })}
         </section>
       </div>
     </main>

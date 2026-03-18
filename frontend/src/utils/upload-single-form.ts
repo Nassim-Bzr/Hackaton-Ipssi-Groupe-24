@@ -52,8 +52,17 @@ export async function uploadSingleForm(
     if (formToUpload.dateEmission) {
       formData.append("date_emission", formToUpload.dateEmission)
     }
+    if (formToUpload.dateEcheance) {
+      formData.append("date_echeance", formToUpload.dateEcheance)
+    }
     if (formToUpload.dateExpiration) {
       formData.append("date_expiration", formToUpload.dateExpiration)
+    }
+    if (formToUpload.numeroFacture) {
+      formData.append("numero_facture", formToUpload.numeroFacture)
+    }
+    if (formToUpload.modePaiement) {
+      formData.append("mode_paiement", formToUpload.modePaiement)
     }
     if (typeof formToUpload.montantHt === "number") {
       formData.append("montant_ht", String(formToUpload.montantHt))
@@ -69,6 +78,12 @@ export async function uploadSingleForm(
     }
     if (formToUpload.iban) {
       formData.append("iban", formToUpload.iban)
+    }
+    if (formToUpload.siretClient) {
+      formData.append("siret_client", formToUpload.siretClient)
+    }
+    if (formToUpload.siretFournisseur) {
+      formData.append("siret_fournisseur", formToUpload.siretFournisseur)
     }
 
     const response = await fetch("http://localhost:3000/upload-to-bdd", {

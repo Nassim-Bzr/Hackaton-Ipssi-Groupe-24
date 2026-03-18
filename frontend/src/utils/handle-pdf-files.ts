@@ -1,188 +1,152 @@
 import type { PdfForm } from "@/types/pdf-form.type"
-import type { UploadState } from "@/types/upload-state.type"
-
-type HandlePdfFilesOptions = {
-  setForms: (forms: PdfForm[]) => void
-  setGlobalMessage: (message: string | null) => void
-  setGlobalStatus: (status: UploadState) => void
-}
 
 /**
- * Traite une liste de fichiers en ne conservant que les PDF,
- * appelle le backend pour analyser chaque document
- * et pré-remplit les formulaires avec les données retournées.
- *
- * Cette étape ne déclenche PAS d'enregistrement en base :
- * la BDD n'est mise à jour que via la route `/upload-to-bdd`
- * appelée au clic sur les boutons d'upload.
+ * Helpers de pré-traitement/mapping pour l'upload/analyse PDF.
  */
-export async function handlePdfFiles(
-  fileList: FileList | null,
-  options: HandlePdfFilesOptions
-) {
-  const { setForms, setGlobalMessage, setGlobalStatus } = options
-
-  if (!fileList) return
-
+export function filterPdfFiles(fileList: FileList | null): File[] {
+  if (!fileList) return []
   const selected = Array.from(fileList)
-  const pdfFiles = selected.filter(
-    (file) =>
-      file.type === "application/pdf" ||
-      file.name.toLowerCase().endsWith(".pdf")
+  return selected.filter(
+    (file) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"),
   )
+}
 
-  if (pdfFiles.length === 0) {
-    setForms([])
-    setGlobalMessage("Veuillez sélectionner uniquement des fichiers PDF.")
-    setGlobalStatus("error")
-    return
-  }
-
-  // On initialise des formulaires vides pendant l'analyse
-  const initialForms: PdfForm[] = pdfFiles.map((file) => ({
+export function buildInitialForms(pdfFiles: File[]): PdfForm[] {
+  return pdfFiles.map((file) => ({
     file,
     id: "",
     nom: "",
     uploadState: "idle",
     message: "Analyse du document en cours...",
   }))
+}
 
-  setForms(initialForms)
-  setGlobalMessage("Analyse des documents en cours...")
-  setGlobalStatus("idle")
+export function buildAnalyzeFormData(file: File): FormData {
+  const formData = new FormData()
+  formData.append("file", file)
+  // Valeurs techniques pour id/nom ; elles pourront être écrasées ensuite.
+  formData.append("id", file.name)
+  formData.append("nom", file.name.replace(/\.pdf$/i, ""))
+  return formData
+}
 
-  try {
-    const analyzedForms: PdfForm[] = await Promise.all(
-      pdfFiles.map(async (file) => {
-        const formData = new FormData()
-        formData.append("file", file)
-        // On envoie des valeurs techniques pour id/nom ; elles pourront
-        // être écrasées ensuite par l'utilisateur dans le formulaire.
-        formData.append("id", file.name)
-        formData.append("nom", file.name.replace(/\.pdf$/i, ""))
+function normalizeDateForDateInput(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
 
-        const response = await fetch("http://localhost:3000/upload", {
-          method: "POST",
-          body: formData,
-        })
+  // Déjà au format attendu par <input type="date">.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
 
-        if (!response.ok) {
-          throw new Error("Réponse du serveur invalide lors de l'analyse du document.")
-        }
+  // Backends/NER renvoient souvent jj/mm/aaaa.
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed)
+  if (!match) return trimmed
+  const [, dd, mm, yyyy] = match
+  return `${yyyy}-${mm}-${dd}`
+}
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let data: any = {}
-        try {
-          data = await response.json()
-          console.log("[UPLOAD /upload] Réponse backend (analyse) pour le document :", {
-            fileName: file.name,
-            backendResponse: data,
-          })
-        } catch {
-          // Si la réponse n'est pas un JSON valide, on retombe sur un formulaire quasi-vide.
-          console.warn(
-            "[UPLOAD /upload] Impossible de parser la réponse JSON du backend (analyse)",
-          )
-        }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractPayload(data: any): any {
+  // On tolère plusieurs formats: {entities}, {data:{entities}}, {data:{data:{entities}}}, etc.
+  return data?.data?.data ?? data?.data ?? data
+}
 
-        const entities = (data && data.entities) || {}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapBackendAnalysisToPdfForm(file: File, data: any): PdfForm {
+  const payload = extractPayload(data)
+  const prefill = (payload && payload.prefill) || {}
+  const entities = (payload && payload.entities) || {}
 
-        const inferredId: string =
-          entities.siret ||
-          data?.doc_id ||
-          ""
+  const inferredId: string =
+    prefill.siret_fournisseur ||
+    entities.siret_fournisseur ||
+    entities.siret ||
+    payload?.doc_id ||
+    payload?.nom ||
+    ""
 
-        const inferredNom: string =
-          entities.nom_fournisseur ||
-          data?.nom ||
-          ""
+  const inferredNom: string = entities.nom_fournisseur || payload?.nom || ""
 
-        const inferredDateEmission: string | undefined =
-          entities.date_emission || data?.metadata?.date_emission
+  const inferredDateEmissionRaw: unknown = prefill.date_emission ?? entities.date_emission
+  const inferredDateEmission: string | undefined = normalizeDateForDateInput(inferredDateEmissionRaw)
 
-        const inferredDateExpiration: string | undefined =
-          entities.date_expiration || data?.metadata?.date_expiration
+  const inferredDateEcheanceRaw: unknown =
+    prefill.date_echeance ?? entities.date_echeance
+  const inferredDateEcheance: string | undefined = normalizeDateForDateInput(inferredDateEcheanceRaw)
 
-        const inferredMontantTtcRaw: unknown =
-          entities.montant_ttc ?? data?.metadata?.montant_ttc
-        const inferredMontantTtc =
-          typeof inferredMontantTtcRaw === "number"
-            ? inferredMontantTtcRaw
-            : typeof inferredMontantTtcRaw === "string"
-              ? Number.parseFloat(inferredMontantTtcRaw)
-              : undefined
+  const inferredDateExpiration: string | undefined = entities.date_expiration
 
-        const inferredMontantHtRaw: unknown =
-          entities.montant_ht ?? data?.metadata?.montant_ht
-        const inferredMontantHt =
-          typeof inferredMontantHtRaw === "number"
-            ? inferredMontantHtRaw
-            : typeof inferredMontantHtRaw === "string"
-              ? Number.parseFloat(inferredMontantHtRaw)
-              : undefined
+  const inferredNumeroFacture: string | undefined =
+    (entities.numero_facture as string | undefined) || undefined
 
-        const inferredTvaRaw: unknown =
-          entities.tva ?? data?.metadata?.tva
-        const inferredTva =
-          typeof inferredTvaRaw === "number"
-            ? inferredTvaRaw
-            : typeof inferredTvaRaw === "string"
-              ? Number.parseFloat(inferredTvaRaw)
-              : undefined
+  const inferredModePaiement: string | undefined =
+    (entities.mode_paiement as string | undefined) || undefined
 
-        const inferredSiret: string | undefined =
-          (entities.siret as string | undefined) || undefined
+  const inferredMontantTtcRaw: unknown = prefill.montant_ttc ?? entities.montant_ttc
+  const inferredMontantTtc =
+    typeof inferredMontantTtcRaw === "number"
+      ? inferredMontantTtcRaw
+      : typeof inferredMontantTtcRaw === "string"
+        ? Number.parseFloat(inferredMontantTtcRaw)
+        : undefined
 
-        const inferredSiren: string | undefined =
-          (entities.siren as string | undefined) || undefined
+  const inferredMontantHtRaw: unknown = prefill.montant_ht ?? entities.montant_ht
+  const inferredMontantHt =
+    typeof inferredMontantHtRaw === "number"
+      ? inferredMontantHtRaw
+      : typeof inferredMontantHtRaw === "string"
+        ? Number.parseFloat(inferredMontantHtRaw)
+        : undefined
 
-        const inferredNomFournisseur: string | undefined =
-          (entities.nom_fournisseur as string | undefined) || undefined
+  const inferredTvaRaw: unknown = prefill.tva ?? entities.tva
+  const inferredTva =
+    typeof inferredTvaRaw === "number"
+      ? inferredTvaRaw
+      : typeof inferredTvaRaw === "string"
+        ? Number.parseFloat(inferredTvaRaw)
+        : undefined
 
-        const inferredIban: string | undefined =
-          (entities.iban as string | undefined) || undefined
+  const inferredSiretFournisseur: string | undefined =
+    (prefill.siret_fournisseur as string | undefined) ||
+    (entities.siret_fournisseur as string | undefined) ||
+    (entities.siret as string | undefined) ||
+    undefined
 
-        const inferredDocumentType: string | undefined =
-          (data && (data.document_type as string)) || undefined
+  const inferredSiretClient: string | undefined =
+    (entities.siret_client as string | undefined) || undefined
 
-        return {
-          file,
-          id: inferredId,
-          nom: inferredNom,
-          dateEmission: inferredDateEmission,
-          dateExpiration: inferredDateExpiration,
-          montantTtc: inferredMontantTtc,
-          montantHt: inferredMontantHt,
-          tva: inferredTva,
-          siret: inferredSiret,
-          siren: inferredSiren,
-          nomFournisseur: inferredNomFournisseur,
-          iban: inferredIban,
-          documentType: inferredDocumentType,
-          uploadState: "idle",
-          message: null,
-        }
-      }),
-    )
+  const inferredSiret: string | undefined =
+    inferredSiretFournisseur || inferredSiretClient || undefined
 
-    setForms(analyzedForms)
-    setGlobalMessage(null)
-    setGlobalStatus("success")
-  } catch (error) {
-    console.error("Erreur lors de l'analyse des PDFs côté backend :", error)
-    setForms(
-      pdfFiles.map((file) => ({
-        file,
-        id: "",
-        nom: "",
-        uploadState: "error",
-        message:
-          "Impossible d'analyser automatiquement ce document pour le moment. Vous pouvez renseigner les champs manuellement.",
-      })),
-    )
-    setGlobalMessage(
-      "Une erreur est survenue lors de l'analyse automatique des documents. Vous pouvez compléter les formulaires manuellement.",
-    )
-    setGlobalStatus("error")
+  const inferredSiren: string | undefined = (entities.siren as string | undefined) || undefined
+  const inferredNomFournisseur: string | undefined =
+    (entities.nom_fournisseur as string | undefined) || undefined
+  const inferredIban: string | undefined =
+    (prefill.iban as string | undefined) || (entities.iban as string | undefined) || undefined
+
+  const inferredDocumentType: string | undefined =
+    (payload && (payload.document_type as string)) || undefined
+
+  return {
+    file,
+    id: inferredId,
+    nom: inferredNom,
+    dateEmission: inferredDateEmission,
+    dateEcheance: inferredDateEcheance,
+    dateExpiration: inferredDateExpiration,
+    numeroFacture: inferredNumeroFacture,
+    modePaiement: inferredModePaiement,
+    montantTtc: inferredMontantTtc,
+    montantHt: inferredMontantHt,
+    tva: inferredTva,
+    siret: inferredSiret,
+    siretClient: inferredSiretClient,
+    siretFournisseur: inferredSiretFournisseur,
+    siren: inferredSiren,
+    nomFournisseur: inferredNomFournisseur,
+    iban: inferredIban,
+    documentType: inferredDocumentType,
+    uploadState: "idle",
+    message: null,
   }
 }
