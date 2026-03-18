@@ -29,6 +29,9 @@ export function FactureForm({ facture, onUpload, isUploading }: FactureFormProps
       montant_ht: 0,
       montant_ttc: 0,
       nom_fournisseur: "",
+      adresse_fournisseur_adress: "",
+      adresse_fournisseur_zip: "",
+      adresse_fournisseur_city: "",
       numero_facture: "",
       siren: "",
       siret: "",
@@ -67,6 +70,33 @@ export function FactureForm({ facture, onUpload, isUploading }: FactureFormProps
               value={entities.nom_fournisseur ?? ""}
               onChange={(e) => setEntities((prev) => ({ ...prev, nom_fournisseur: e.target.value }))}
               placeholder="Ex: ACME SAS"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">ADRESSE</Label>
+            <Input
+              value={entities.adresse_fournisseur_adress ?? ""}
+              onChange={(e) => setEntities((prev) => ({ ...prev, adresse_fournisseur_adress: e.target.value }))}
+              placeholder="Ex: 123 Main St, Anytown, USA"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">VILLE</Label>
+            <Input
+              value={entities.adresse_fournisseur_city ?? ""}
+              onChange={(e) => setEntities((prev) => ({ ...prev, adresse_fournisseur_city: e.target.value }))}
+              placeholder="Ex: Paris"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">CODE POSTAL</Label>
+            <Input
+              value={entities.adresse_fournisseur_zip ?? ""}
+              onChange={(e) => setEntities((prev) => ({ ...prev, adresse_fournisseur_zip: e.target.value }))}
+              placeholder="Ex: 75001"
             />
           </div>
 
