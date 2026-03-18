@@ -36,6 +36,9 @@ export type PdfForm = {
   siretFournisseur?: string
   siren?: string
   nomFournisseur?: string
+  adresseFournisseur?: string
+  codePostalFournisseur?: string
+  villeFournisseur?: string
   nomClient?: string
   iban?: string
   uploadState: UploadState

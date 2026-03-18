@@ -60,6 +60,21 @@ function buildUploadFormData(variables: UploadToBddVariables): FormData {
   appendIfPresent(formData, "siren", (entities as { siren?: string }).siren)
   appendIfPresent(formData, "date_emission", (entities as { date_emission?: string }).date_emission)
   appendIfPresent(formData, "nom_fournisseur", (entities as { nom_fournisseur?: string }).nom_fournisseur)
+  appendIfPresent(
+    formData,
+    "adresse_fournisseur_adress",
+    (entities as { adresse_fournisseur_adress?: string }).adresse_fournisseur_adress,
+  )
+  appendIfPresent(
+    formData,
+    "adresse_fournisseur_zip",
+    (entities as { adresse_fournisseur_zip?: string }).adresse_fournisseur_zip,
+  )
+  appendIfPresent(
+    formData,
+    "adresse_fournisseur_city",
+    (entities as { adresse_fournisseur_city?: string }).adresse_fournisseur_city,
+  )
   appendIfPresent(formData, "iban", (entities as { iban?: string }).iban)
   appendIfPresent(formData, "montant_ht", (entities as { montant_ht?: number }).montant_ht)
   appendIfPresent(formData, "montant_ttc", (entities as { montant_ttc?: number }).montant_ttc)

@@ -76,6 +76,15 @@ export async function uploadSingleForm(
     if (formToUpload.nomFournisseur) {
       formData.append("nom_fournisseur", formToUpload.nomFournisseur)
     }
+    if (formToUpload.adresseFournisseur) {
+      formData.append("adresse_fournisseur_adress", formToUpload.adresseFournisseur)
+    }
+    if (formToUpload.codePostalFournisseur) {
+      formData.append("adresse_fournisseur_zip", formToUpload.codePostalFournisseur)
+    }
+    if (formToUpload.villeFournisseur) {
+      formData.append("adresse_fournisseur_city", formToUpload.villeFournisseur)
+    }
     if (formToUpload.iban) {
       formData.append("iban", formToUpload.iban)
     }
