@@ -5,3 +5,8 @@ python-multipart
 requests
 pdfplumber
 minio
+paddleocr
+paddlepaddle
+opencv-python
+pdf2image
+numpy

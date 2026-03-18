@@ -2,10 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# poppler-utils pour pdf2image, libgl1 pour opencv
+# poppler-utils pour pdf2image, libgl1 + libglib2.0-0 pour opencv/paddleocr
 RUN apt-get update && apt-get install -y \
     poppler-utils \
     libgl1 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
