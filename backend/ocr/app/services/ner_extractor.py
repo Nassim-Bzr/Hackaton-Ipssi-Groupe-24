@@ -133,7 +133,7 @@ def extraire_fournisseur(texte):
         return match.group(1).strip()
     
     # Fallback : prend uniquement le premier mot de la première ligne non vide
-    # (ex: "Chauvet FACTURE N°..." → "Chauvet")
+   
     for ligne in texte.split('\n'):
         ligne = ligne.strip()
         if ligne and len(ligne) > 1 and not re.match(r'^\d', ligne):
