@@ -75,3 +75,9 @@ for nom, texte in textes:                                     # Parcourt chaque 
     print('='*50)
     resultat = extraire_entites(texte)                        # Appelle la fonction à tester
     print(json.dumps(resultat, indent=2, ensure_ascii=False)) # Affiche le JSON produit
+
+    # Validation minimale : le texte fictif "Devis" doit contenir un numéro de devis détecté
+    if nom == "Devis":
+        assert (
+            resultat.get("numero_devis") == "D-2026-007"
+        ), f'numero_devis inattendu: {resultat.get("numero_devis")}'

@@ -10,6 +10,8 @@ export interface DocumentItem {
     siren: string
     montant_ht: number
     montant_ttc: number
+    numero_facture: string
+    numero_devis: string
     tva: number
     date_emission: string
     date_expiration: string

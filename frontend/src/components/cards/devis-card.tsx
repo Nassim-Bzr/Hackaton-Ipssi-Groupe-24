@@ -1,4 +1,4 @@
-import type { DocumentItem } from "@/types/documents.type"
+import type { DocumentItem } from "@/types/documents.type";
 
 export interface DevisCardProps {
   document: DocumentItem
@@ -10,6 +10,9 @@ export function DevisCard(props: DevisCardProps) {
   return (
     <article className="border bg-muted/60 px-4 py-3 text-sm shadow-sm">
       <h3 className="mb-2 font-bold text-lg underline underline-offset-4">Devis</h3>
+      <p>
+        <span className="font-semibold">Numéro :</span> {document.entities.numero_devis}
+      </p>
       <p>
         <span className="font-semibold">ID :</span> {document.id}
       </p>
