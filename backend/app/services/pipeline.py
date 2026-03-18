@@ -5,7 +5,7 @@ from ocr.app.services.ocr_engine import extraire_texte
 from ocr.app.services.ner_extractor import extraire_entites
 
 
-def traiter_document(chemin_fichier: str) -> dict:
+def traiter_document(chemin_fichier: str, doc_id: str | None = None) -> dict:
     """Reçoit un chemin de fichier PDF et retourne le dict d'extraction complet."""
     texte, score = extraire_texte(chemin_fichier)
     entites = extraire_entites(texte)
@@ -14,8 +14,9 @@ def traiter_document(chemin_fichier: str) -> dict:
     type_doc = entites.pop("document_type", "inconnu")
 
     return {
-        "doc_id": str(uuid.uuid4()),
+        "doc_id": doc_id or str(uuid.uuid4()),
         "document_type": type_doc,
+        "ocr_text": texte,
         "metadata": {
             "confidence_score": score,
             "engine": "pdfplumber",

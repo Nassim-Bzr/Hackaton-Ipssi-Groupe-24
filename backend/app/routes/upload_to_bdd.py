@@ -1,9 +1,14 @@
 import os
-import shutil
+import uuid
 
 import requests
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from app.services.data_lake_service import (
+    save_clean_text,
+    save_curated_record,
+    save_raw_document,
+)
 from app.services.pipeline import traiter_document
 from app.services.mongo_service import save_document
 from config.settings import UPLOAD_DIR, VALIDATION_SERVICE_URL
@@ -34,15 +39,19 @@ async def upload_document_to_bdd(
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Seuls les fichiers PDF sont acceptés.")
 
+    doc_id = str(uuid.uuid4())
+    file_bytes = await file.read()
+    raw_uri = save_raw_document(file_bytes, file.filename, doc_id)
+
     # Sauvegarde temporaire du fichier
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     tmp_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(tmp_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+        f.write(file_bytes)
 
     try:
         # OCR + extraction des entités
-        resultat = traiter_document(tmp_path)
+        resultat = traiter_document(tmp_path, doc_id=doc_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur OCR : {e}")
     finally:
@@ -95,16 +104,34 @@ async def upload_document_to_bdd(
     except requests.RequestException:
         pass  # La validation est best-effort
 
+    clean_uri = save_clean_text(
+        doc_id=doc_id,
+        source_filename=file.filename,
+        ocr_text=resultat.get("ocr_text", ""),
+        metadata={
+            "confidence_score": resultat["metadata"].get("confidence_score"),
+            "document_type": resultat.get("document_type"),
+            "engine": resultat["metadata"].get("engine"),
+        },
+    )
+
     document = {
-        "doc_id": resultat["doc_id"],
+        "doc_id": doc_id,
         "id": id,
         "nom": nom,
         "document_type": resultat["document_type"],
-        "metadata": resultat["metadata"],
+        "metadata": {
+            **resultat["metadata"],
+            "raw_uri": raw_uri,
+            "clean_uri": clean_uri,
+        },
         "entities": entities,
         "is_valid": is_valid,
         "validation_details": validation_details,
     }
+
+    curated_uri = save_curated_record(doc_id=doc_id, curated_payload=document)
+    document["metadata"]["curated_uri"] = curated_uri
 
     save_document(document)
 
@@ -114,5 +141,10 @@ async def upload_document_to_bdd(
         "is_valid": is_valid,
         "confidence_score": resultat["metadata"]["confidence_score"],
         "entities": entities,
+        "data_lake": {
+            "raw_uri": raw_uri,
+            "clean_uri": clean_uri,
+            "curated_uri": curated_uri,
+        },
     }
 
