@@ -9,7 +9,7 @@ from app.services.data_lake_service import (
     save_curated_record,
     save_raw_document,
 )
-from app.services.pipeline import traiter_document
+from app.services.pipeline import construire_prefill, traiter_document
 from app.services.mongo_service import save_document
 from config.settings import UPLOAD_DIR, VALIDATION_SERVICE_URL
 
@@ -31,6 +31,11 @@ async def upload_document_to_bdd(
     tva: str | None = Form(default=None),
     nom_fournisseur: str | None = Form(default=None),
     iban: str | None = Form(default=None),
+    date_echeance: str | None = Form(default=None),
+    numero_facture: str | None = Form(default=None),
+    numero_devis: str | None = Form(default=None),
+    siret_client: str | None = Form(default=None),
+    mode_paiement: str | None = Form(default=None),
 ):
     """
     Effectue l'analyse complète puis enregistre le document en base.
@@ -67,6 +72,11 @@ async def upload_document_to_bdd(
         ("date_expiration", date_expiration),
         ("nom_fournisseur", nom_fournisseur),
         ("iban", iban),
+        ("date_echeance", date_echeance),
+        ("numero_facture", numero_facture),
+        ("numero_devis", numero_devis),
+        ("siret_client", siret_client),
+        ("mode_paiement", mode_paiement),
     ]
     for cle, valeur in champs_simples:
         if valeur:
@@ -84,6 +94,8 @@ async def upload_document_to_bdd(
                 entities[cle] = float(valeur)
             except ValueError:
                 pass
+
+    prefill = construire_prefill(doc_id, resultat["document_type"], entities)
 
     # Appel au service de validation
     siret_for_validation = entities.get("siret") or ""
@@ -141,6 +153,7 @@ async def upload_document_to_bdd(
         "is_valid": is_valid,
         "confidence_score": resultat["metadata"]["confidence_score"],
         "entities": entities,
+        "prefill": prefill,
         "data_lake": {
             "raw_uri": raw_uri,
             "clean_uri": clean_uri,

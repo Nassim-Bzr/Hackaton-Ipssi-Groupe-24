@@ -1,30 +1,97 @@
-import { PdfFormulaire } from "@/components/forms/pdf-formulaire"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import type { UploadToBddVariables } from "@/hooks/use-upload-to-bdd"
+import { useUploadToBdd } from "@/hooks/use-upload-to-bdd"
+import type { Devis } from "@/types/devis.type"
+import type { Facture } from "@/types/facture.type"
 import type { PdfForm } from "@/types/pdf-form.type"
 import type { UploadState } from "@/types/upload-state.type"
-import { handlePdfFiles } from "@/utils/handle-pdf-files"
+import {
+  buildAnalyzeFormData,
+  buildInitialForms,
+  filterPdfFiles,
+  mapBackendAnalysisToPdfForm,
+} from "@/utils/handle-pdf-files"
 import { handleUploadAll as handleUploadAllUtil } from "@/utils/handle-upload-all"
 import { uploadSingleForm as uploadSingleFormUtil } from "@/utils/upload-single-form"
+import { useMutation } from "@tanstack/react-query"
 import React, { useCallback, useRef, useState } from "react"
+import { DevisForm } from "./forms/devis-form"
+import { FactureForm } from "./forms/facture-form"
 
 export function PdfUploader() {
   const [forms, setForms] = useState<PdfForm[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [isUploadingAll, setIsUploadingAll] = useState(false)
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null)
   const [globalMessage, setGlobalMessage] = useState<string | null>(null)
   const [globalStatus, setGlobalStatus] = useState<UploadState>("idle")
   const inputRef = useRef<HTMLInputElement | null>(null)
 
+  // Upload d’un formulaire vers la BDD (hook TanStack Query)
+  const uploadToBddMutation = useUploadToBdd()
+
+  // Requête à l'API pour analyser le document
+  const analyzePdfMutation = useMutation({
+    mutationKey: ["analyze-pdf"],
+    mutationFn: async (file: File) => {
+      const formData = buildAnalyzeFormData(file)
+      const response = await fetch("http://localhost:3000/upload", {
+        method: "POST",
+        body: formData,
+      })
+      if (!response.ok) {
+        throw new Error("Réponse du serveur invalide lors de l'analyse du document.")
+      }
+
+      const data: Facture | Devis = await response.json()
+      return { file, data }
+    },
+  })
+
+  console.log("analyzePdfMutation", analyzePdfMutation.data?.data.entities)
+
+  /**
+   * Gestion des fichiers sélectionnés
+   * ça permet de pouvoir gérer les fichiers sélectionnés dans la zone glisser-déposer
+   * si il n'y a pas de fichiers sélectionnés, on affiche un message
+   */
   const handleFiles = useCallback(
     async (fileList: FileList | null) => {
-      await handlePdfFiles(fileList, {
-        setForms,
-        setGlobalMessage,
-        setGlobalStatus,
-      })
+      const pdfFiles = filterPdfFiles(fileList)
+      setForms(buildInitialForms(pdfFiles))
+      setGlobalMessage("Analyse des documents en cours...")
+      setGlobalStatus("idle")
+      try {
+        const analyzedForms = await Promise.all(pdfFiles.map(async (file) => {
+          const result = await analyzePdfMutation.mutateAsync(file)
+          const mapped = mapBackendAnalysisToPdfForm(file, result.data)
+          if (result.data.document_type === "devis") return { ...mapped, devis: result.data }
+          return { ...mapped, facture: result.data }
+        }))
+
+        setForms(analyzedForms)
+        setGlobalMessage(null)
+        setGlobalStatus("success")
+      } catch (error) {
+        console.error("Erreur lors de l'analyse des PDFs côté backend :", error)
+        setForms(
+          pdfFiles.map((file) => ({
+            file,
+            id: "",
+            nom: "",
+            uploadState: "error",
+            message:
+              "Impossible d'analyser automatiquement ce document pour le moment. Vous pouvez renseigner les champs manuellement.",
+          })),
+        )
+        setGlobalMessage(
+          "Une erreur est survenue lors de l'analyse automatique des documents. Vous pouvez compléter les formulaires manuellement.",
+        )
+        setGlobalStatus("error")
+      }
     },
-    [setForms, setGlobalMessage, setGlobalStatus],
+    [analyzePdfMutation, setForms, setGlobalMessage, setGlobalStatus],
   )
 
   const onInputChange = useCallback<React.ChangeEventHandler<HTMLInputElement>>(
@@ -34,6 +101,12 @@ export function PdfUploader() {
     [handleFiles],
   )
 
+  /**
+   * Gestion du glisser-déposer
+   * Comportement de base : les fichiers vont s'ouvrir dans le navigateur
+   * en faisant event.preventDefault() et event.stopPropagation()
+   * on évite que le navigateur ouvre les fichiers dans le navigateur
+   */
   const onDrop = useCallback<React.DragEventHandler<HTMLDivElement>>(
     (event) => {
       event.preventDefault()
@@ -44,22 +117,31 @@ export function PdfUploader() {
     [handleFiles],
   )
 
+  /**
+   * Gestion du glisser-déposer
+   * Comportement de base : les fichiers vont s'ouvrir dans le navigateur
+   * en faisant event.preventDefault() et event.stopPropagation()
+   * on évite que le navigateur ouvre les fichiers dans le navigateur
+   */
   const onDragOver = useCallback<React.DragEventHandler<HTMLDivElement>>((event) => {
     event.preventDefault()
     event.stopPropagation()
     setIsDragging(true)
   }, [])
 
-  const onDragLeave = useCallback<React.DragEventHandler<HTMLDivElement>>((event) => {
-    event.preventDefault()
-    event.stopPropagation()
-    setIsDragging(false)
-  }, [])
-
+  /**
+   * La zone glisser-déposer est un input déguisé
+   * cette fonction déclanche la modal d'ouverture de fichier
+   */
   const triggerFileDialog = () => {
     inputRef.current?.click()
   }
 
+  /**
+   * Mise à jour du formulaire à l'index donné
+   * avec la fonction updater passée en paramètre
+   * ça sert surtout pour pouvoir gérer plusieurs formulaires en même temps
+   */
   const updateFormAtIndex = useCallback(
     (index: number, updater: (form: PdfForm) => PdfForm) => {
       setForms((prev) => {
@@ -69,14 +151,91 @@ export function PdfUploader() {
         return next
       })
     },
-    [setForms],
+    [],
   )
 
+  /**
+   * Callback pour l’upload BDD (succès) par index
+   * On met à jour le formulaire à l'index donné
+   * avec la fonction updater passée en paramètre
+   * ça sert surtout pour pouvoir gérer plusieurs formulaires en même temps
+   * la fonction updater est une fonction qui prend un formulaire et renvoie un formulaire
+   * on peut donc utiliser cette fonction pour mettre à jour le formulaire à l'index donné
+   * avec les nouvelles valeurs
+   */
+  const onUploadToBddSuccess = useCallback(
+    (_data: unknown, variables: UploadToBddVariables) => {
+      setUploadingIndex(null)
+      updateFormAtIndex(variables.index, (form) => ({
+        ...form,
+        uploadState: "success",
+        message: "Ce formulaire a été envoyé avec succès.",
+      }))
+    },
+    [updateFormAtIndex],
+  )
+
+  /**
+   * Callback pour l’upload BDD (erreur) par index
+   * On met à jour le formulaire à l'index donné
+   * avec la fonction updater passée en paramètre
+   * ça sert surtout pour pouvoir gérer plusieurs formulaires en même temps
+   * la fonction updater est une fonction qui prend un formulaire et renvoie un formulaire
+   * on peut donc utiliser cette fonction pour mettre à jour le formulaire à l'index donné
+   * avec les nouvelles valeurs
+   */
+  const onUploadToBddError = useCallback(
+    (error: Error, variables: UploadToBddVariables) => {
+      setUploadingIndex(null)
+      updateFormAtIndex(variables.index, (form) => ({
+        ...form,
+        uploadState: "error",
+        message: error.message ?? "Une erreur est survenue lors de l'envoi de ce formulaire.",
+      }))
+    },
+    [updateFormAtIndex],
+  )
+
+  /**
+   * Envoie d'une facture précise en fonction de son index
+   * ça permet de pouvoir uploader une facture sans tout uploader en même temps
+   */
+  const handleUploadFacture = useCallback(
+    (index: number) => (entities: Facture["entities"]) => {
+      const form = forms[index]
+      if (!form) return
+      setUploadingIndex(index)
+      uploadToBddMutation.mutate({ index, file: form.file, id: form.id, nom: form.nom, entities, documentType: "facture" }, { onSuccess: onUploadToBddSuccess, onError: onUploadToBddError })
+    },
+    [forms, uploadToBddMutation, onUploadToBddSuccess, onUploadToBddError],
+  )
+
+  /**
+   * Envoie d'un devis précis en fonction de son index
+   * ça permet de pouvoir uploader un devis sans tout uploader en même temps
+   */
+  const handleUploadDevis = useCallback(
+    (index: number) => (entities: Devis["entities"]) => {
+      const form = forms[index]
+      if (!form) return
+      setUploadingIndex(index)
+      uploadToBddMutation.mutate({ index, file: form.file, id: form.id, nom: form.nom, entities, documentType: "devis" }, { onSuccess: onUploadToBddSuccess, onError: onUploadToBddError })
+    },
+    [forms, uploadToBddMutation, onUploadToBddSuccess, onUploadToBddError],
+  )
+
+  /**
+   * Fonction wrapper qui permet facilement d'identifier le formulaire à uploader
+   */
   const uploadSingleForm = useCallback(
     (index: number) => uploadSingleFormUtil(index, forms, updateFormAtIndex),
     [forms, updateFormAtIndex],
   )
 
+  /**
+   * Envoie de tous les formulaires
+   * ça permet de pouvoir uploader tous les formulaires en même temps
+   */
   const handleUploadAll = useCallback(
     () =>
       handleUploadAllUtil(forms, {
@@ -90,6 +249,11 @@ export function PdfUploader() {
     [forms, isUploadingAll, setIsUploadingAll, setGlobalMessage, setGlobalStatus, inputRef, uploadSingleForm],
   )
 
+  /**
+   * Affichage des fichiers sélectionnés
+   * ça permet de pouvoir afficher les fichiers sélectionnés dans la zone glisser-déposer
+   * si il n'y a pas de fichiers sélectionnés, on affiche un message
+   */
   const hasFiles = forms.length > 0
 
   return (
@@ -97,7 +261,6 @@ export function PdfUploader() {
       <article
         onDrop={onDrop}
         onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
         className={[
           "flex min-h-40 w-full cursor-pointer flex-col items-center justify-center border border-dashed bg-muted/40 p-6 text-center text-sm transition-colors",
           isDragging ? "border-primary bg-primary/5" : "border-border",
@@ -131,17 +294,50 @@ export function PdfUploader() {
 
       {hasFiles && (
         <section className="flex flex-col gap-3">
-          {forms.map((form, index) => (
-            <PdfFormulaire
-              key={`${form.file.name}-${index}`}
-              form={form}
-              uploadState={form.uploadState}
-              message={form.message}
-              isUploadingAll={isUploadingAll}
-              onChange={(updater) => updateFormAtIndex(index, updater)}
-              onUpload={() => uploadSingleForm(index)}
-            />
-          ))}
+          {forms.map((form, index) => {
+            if (form.documentType === "facture") {
+              return (
+                <div key={`${form.file.name}-${index}`} className="space-y-2">
+                  <FactureForm
+                    facture={form.facture}
+                    onUpload={handleUploadFacture(index)}
+                    isUploading={uploadingIndex === index}
+                  />
+                  {form.message != null && form.message !== "" && (
+                    <p
+                      className={
+                        form.uploadState === "error"
+                          ? "text-xs text-destructive"
+                          : "text-xs text-emerald-600 dark:text-emerald-400"
+                      }
+                    >
+                      {form.message}
+                    </p>
+                  )}
+                </div>
+              )
+            }
+            return (
+              <div key={`${form.file.name}-${index}`} className="space-y-2">
+                <DevisForm
+                  devis={form.devis}
+                  onUpload={handleUploadDevis(index)}
+                  isUploading={uploadingIndex === index}
+                />
+                {form.message != null && form.message !== "" && (
+                  <p
+                    className={
+                      form.uploadState === "error"
+                        ? "text-xs text-destructive"
+                        : "text-xs text-emerald-600 dark:text-emerald-400"
+                    }
+                  >
+                    {form.message}
+                  </p>
+                )}
+              </div>
+            )
+          })}
         </section>
       )}
 

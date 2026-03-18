@@ -3,10 +3,32 @@
 import re  # Bibliothèque pour les expressions régulières
 
 
+def _normaliser_siret(valeur: str) -> str:
+    return re.sub(r"\D", "", valeur or "")
+
+
+def extraire_tous_les_siret(texte: str) -> list[str]:
+    """
+    Retourne tous les SIRET trouvés dans le texte (14 chiffres), en acceptant les espaces.
+    Exemple : \"625 098 876 00018\" -> \"62509887600018\".
+    """
+    if not texte:
+        return []
+    candidates = re.findall(r"\b\d{3}[\s.]?\d{3}[\s.]?\d{3}[\s.]?\d{5}\b", texte)
+    sirets: list[str] = []
+    seen = set()
+    for c in candidates:
+        s = _normaliser_siret(c)
+        if len(s) == 14 and s not in seen:
+            sirets.append(s)
+            seen.add(s)
+    return sirets
+
+
 def extraire_siret(texte):
-    # Cherche un SIRET : exactement 14 chiffres consécutifs dans le texte
-    match = re.search(r'\b\d{14}\b', texte)
-    return match.group() if match else None
+    # Cherche le premier SIRET (14 chiffres), en acceptant les espaces.
+    sirets = extraire_tous_les_siret(texte)
+    return sirets[0] if sirets else None
 
 
 def extraire_siren(texte):
@@ -44,6 +66,66 @@ def extraire_date(texte, mots_cles):
         if match:
             return match.group(1)  
     return None
+
+
+def extraire_numero_facture(texte: str) -> str | None:
+    """
+    Extrait un numéro de facture près de \"FACTURE\" / \"Facture N°\".
+    Accepte les retours à la ligne (ex: \"FACTURE N°\\nFAC-2026-0001\").
+    """
+    if not texte:
+        return None
+    match = re.search(
+        r"(?:FACTURE)\s*(?:N[°o]|No|#)?\s*[:\-]?\s*([A-Z0-9][A-Z0-9-]{3,})",
+        texte,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    numero = match.group(1).strip()
+    return numero or None
+
+
+def extraire_mode_paiement(texte: str) -> str | None:
+    """Extrait le mode de règlement (ex: \"Carte bancaire\") si présent."""
+    if not texte:
+        return None
+    match = re.search(
+        r"(?:Mode\s+de\s+r[èeé]glement)\s*[:\-]?\s*([^\n\r]+)",
+        texte,
+        re.IGNORECASE,
+    )
+    if match:
+        valeur = match.group(1).strip()
+        return valeur or None
+    return None
+
+
+def extraire_date_echeance(texte: str) -> str | None:
+    """Extrait la date d'échéance si présente (Échéance / Echeance / À régler avant le)."""
+    return extraire_date(texte, ["échéance", "echeance", "à régler avant le", "a regler avant le"])
+
+
+def extraire_siret_fournisseur_client(texte: str) -> dict:
+    """
+    Essaie d'attribuer un SIRET au fournisseur et au client.
+    Heuristique simple : séparation par la section \"FACTURÉ À\" (ou variantes).
+    """
+    sirets = extraire_tous_les_siret(texte)
+    if not sirets:
+        return {"siret_fournisseur": None, "siret_client": None, "sirets": []}
+
+    marker = re.search(r"FACTUR[ÉE]\s+À|FACTURE\s+A|FACTURE\s+À", texte, re.IGNORECASE)
+    if marker:
+        avant = texte[: marker.start()]
+        apres = texte[marker.end() :]
+        siret_f = extraire_siret(avant) or (sirets[0] if sirets else None)
+        siret_c = extraire_siret(apres)
+        return {"siret_fournisseur": siret_f, "siret_client": siret_c, "sirets": sirets}
+
+    siret_f = sirets[0] if len(sirets) >= 1 else None
+    siret_c = sirets[1] if len(sirets) >= 2 else None
+    return {"siret_fournisseur": siret_f, "siret_client": siret_c, "sirets": sirets}
 
 
 def extraire_fournisseur(texte):
@@ -102,9 +184,13 @@ def extraire_entites(texte):
     type_doc = extraire_type_document(texte)  # Détermine d'abord le type du document
 
     # Champs communs à tous les documents
+    attribution_siret = extraire_siret_fournisseur_client(texte)
     base = {
         "document_type": type_doc,
         "siret":         extraire_siret(texte),
+        "sirets":        attribution_siret.get("sirets", []),
+        "siret_fournisseur": attribution_siret.get("siret_fournisseur"),
+        "siret_client":  attribution_siret.get("siret_client"),
         "siren":         extraire_siren(texte),
         "date_emission": extraire_date(texte, ["date", "émis", "emission", "le"]),
     }
@@ -112,10 +198,13 @@ def extraire_entites(texte):
     if type_doc == "facture":                          # Champs spécifiques à une facture
         base.update({
             "nom_fournisseur": extraire_fournisseur(texte),
+            "numero_facture":  extraire_numero_facture(texte),
+            "date_echeance":   extraire_date_echeance(texte),
             "montant_ht":      extraire_montant(texte, "HT"),
             "montant_ttc":     extraire_montant(texte, "TTC"),
             "tva":             extraire_montant(texte, "TVA"),
             "iban":            extraire_iban(texte),
+            "mode_paiement":   extraire_mode_paiement(texte),
         })
 
     elif type_doc == "devis":                          # Champs spécifiques à un devis

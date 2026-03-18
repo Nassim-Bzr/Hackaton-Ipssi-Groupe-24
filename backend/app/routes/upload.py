@@ -43,6 +43,7 @@ async def upload_document(
         os.remove(tmp_path)
 
     entities = resultat.get("entities", {})
+    prefill = resultat.get("prefill", {})
 
     # Appel au service de validation
     siret = entities.get("siret") or ""
@@ -97,6 +98,7 @@ async def upload_document(
         "document_type": resultat["document_type"],
         "metadata": resultat["metadata"],
         "entities": entities,
+        "prefill": prefill,
         "is_valid": is_valid,
         "validation_details": validation_details,
         "confidence_score": resultat["metadata"]["confidence_score"],

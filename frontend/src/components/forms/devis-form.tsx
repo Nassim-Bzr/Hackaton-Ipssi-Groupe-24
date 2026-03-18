@@ -1,212 +1,168 @@
-import React from "react"
-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import type { UploadState } from "@/types/upload-state.type"
+import type { Devis } from "@/types/devis.type"
+import { normalizeDateForDateInput } from "@/utils/normalzeDateForDateInput"
+import { useEffect, useMemo, useState } from "react"
 
 type DevisFormProps = {
-  fileName: string
-  idValue: string
-  nomValue: string
-  dateEmission?: string
-  dateExpiration?: string
-  siret?: string
-  siren?: string
-  montantTtc?: number
-  montantHt?: number
-  tva?: number
-  uploadState: UploadState
-  message: string | null
-  isUploadingAll: boolean
-  onChangeId: (value: string) => void
-  onChangeNom: (value: string) => void
-  onChangeDateEmission: (value: string) => void
-  onChangeDateExpiration: (value: string) => void
-  onChangeSiret: (value: string) => void
-  onChangeSiren: (value: string) => void
-  onChangeMontantTtc: (value: number | undefined) => void
-  onChangeMontantHt: (value: number | undefined) => void
-  onChangeTva: (value: number | undefined) => void
-  onUpload: () => void
+  devis?: Devis
+  onUpload?: (entities: Devis["entities"]) => void
+  isUploading?: boolean
 }
 
-export function DevisForm({
-  fileName,
-  idValue,
-  nomValue,
-  dateEmission,
-  dateExpiration,
-  siret,
-  siren,
-  montantTtc,
-  montantHt,
-  tva,
-  uploadState,
-  message,
-  isUploadingAll,
-  onChangeId,
-  onChangeNom,
-  onChangeDateEmission,
-  onChangeDateExpiration,
-  onChangeSiret,
-  onChangeSiren,
-  onChangeMontantTtc,
-  onChangeMontantHt,
-  onChangeTva,
-  onUpload,
-}: DevisFormProps) {
+export function DevisForm({ devis, onUpload, isUploading }: DevisFormProps) {
+  const initialEntities = useMemo<Devis["entities"]>(() => {
+    if (devis) {
+      return {
+        ...devis.entities,
+        date_emission: normalizeDateForDateInput(devis.entities.date_emission),
+        date_expiration: normalizeDateForDateInput(devis.entities.date_expiration),
+      }
+    }
+    return {
+      date_emission: "",
+      date_expiration: "",
+      montant_ht: 0,
+      montant_ttc: 0,
+      tva: 0,
+      nom_fournisseur: "",
+      numero_devis: "",
+      siren: "",
+      siret: "",
+    }
+  }, [devis])
+
+  const [entities, setEntities] = useState<Devis["entities"]>(initialEntities)
+
+  useEffect(() => {
+    setEntities(initialEntities)
+  }, [initialEntities])
+
+  if (!devis) return null
+
   return (
-    <article className="space-y-2 border bg-background p-3 text-xs">
-      <p className="font-medium break-all">{fileName}</p>
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs">
-            ID
-            <Input
-              value={idValue}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChangeId(event.target.value)}
-              className="mt-1 h-8 text-xs"
-            />
-          </label>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs">
-            Nom
-            <Input
-              value={nomValue}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChangeNom(event.target.value)}
-              className="mt-1 h-8 text-xs"
-            />
-          </label>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs">
-            Date d&apos;émission
-            <Input
-              type="date"
-              value={dateEmission ?? ""}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChangeDateEmission(event.target.value)}
-              className="mt-1 h-8 text-xs"
-            />
-          </label>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs">
-            Date d&apos;expiration
-            <Input
-              type="date"
-              value={dateExpiration ?? ""}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChangeDateExpiration(event.target.value)}
-              className="mt-1 h-8 text-xs"
-            />
-          </label>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs">
-            SIRET
-            <Input
-              value={siret ?? ""}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChangeSiret(event.target.value)}
-              className="mt-1 h-8 text-xs"
-            />
-          </label>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label>
-            SIREN
-            <Input
-              value={siren ?? ""}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChangeSiren(event.target.value)}
-              className="mt-1 h-8 text-xs"
-            />
-          </label>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label>
-            Montant TTC
-            <Input
-              type="number"
-              value={Number.isFinite(montantTtc ?? NaN) ? String(montantTtc) : ""}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                const value = event.target.value
-                const parsed = value === "" ? undefined : Number.parseFloat(value)
-                onChangeMontantTtc(Number.isNaN(parsed as number) ? undefined : (parsed as number | undefined))
-              }}
-              className="mt-1 h-8 text-xs"
-            />
-          </label>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs">
-            Montant HT
-            <Input
-              type="number"
-              value={Number.isFinite(montantHt ?? NaN) ? String(montantHt) : ""}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                const value = event.target.value
-                const parsed = value === "" ? undefined : Number.parseFloat(value)
-                onChangeMontantHt(Number.isNaN(parsed as number) ? undefined : (parsed as number | undefined))
-              }}
-              className="mt-1 h-8 text-xs"
-            />
-          </label>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs">
-            TVA
-            <Input
-              type="number"
-              value={Number.isFinite(tva ?? NaN) ? String(tva) : ""}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                const value = event.target.value
-                const parsed = value === "" ? undefined : Number.parseFloat(value)
-                onChangeTva(Number.isNaN(parsed as number) ? undefined : (parsed as number | undefined))
-              }}
-              className="mt-1 h-8 text-xs"
-            />
-          </label>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onUpload}
-          disabled={uploadState === "uploading" || isUploadingAll}
-        >
-          {uploadState === "uploading" ? "Envoi en cours..." : "Uploader ce devis"}
-        </Button>
-
-        {uploadState === "success" && (
-          <span className="text-xs text-emerald-600 dark:text-emerald-400">Envoyé</span>
-        )}
-        {uploadState === "error" && message && <span className="text-xs text-destructive">Erreur</span>}
-      </div>
-
-      {message && (
-        <p
-          className={[
-            "border px-2 py-1",
-            uploadState === "error"
-              ? "border-destructive/40 bg-destructive/5 text-destructive"
-              : "border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
-          ].join(" ")}
-        >
-          {message}
+    <form className="rounded-md border bg-background p-4">
+      <header className="mb-4">
+        <h2 className="text-sm font-semibold">Devis</h2>
+        <p className="text-xs text-muted-foreground">
+          Champs pré-remplis automatiquement. Vous pouvez les modifier si nécessaire.
         </p>
+      </header>
+
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <p className="text-xs font-medium">Nom fournisseur</p>
+          <Input
+            value={entities.nom_fournisseur ?? ""}
+            onChange={(e) => setEntities((prev) => ({ ...prev, nom_fournisseur: e.target.value }))}
+            placeholder="Ex: ACME SAS"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs font-medium">Numéro de devis</p>
+          <Input
+            value={entities.numero_devis ?? ""}
+            onChange={(e) => setEntities((prev) => ({ ...prev, numero_devis: e.target.value }))}
+            placeholder="Ex: D-2026-001"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs font-medium">Date d’émission</p>
+          <Input
+            type="date"
+            value={entities.date_emission ?? ""}
+            onChange={(e) => setEntities((prev) => ({ ...prev, date_emission: e.target.value }))}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs font-medium">Date d’expiration</p>
+          <Input
+            type="date"
+            value={entities.date_expiration ?? ""}
+            onChange={(e) => setEntities((prev) => ({ ...prev, date_expiration: e.target.value }))}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs font-medium">Montant HT</p>
+          <Input
+            inputMode="decimal"
+            value={Number.isFinite(entities.montant_ht) ? String(entities.montant_ht) : ""}
+            onChange={(e) =>
+              setEntities((prev) => ({
+                ...prev,
+                montant_ht: e.target.value === "" ? 0 : Number.parseFloat(e.target.value),
+              }))
+            }
+            placeholder="0.00"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs font-medium">Montant TTC</p>
+          <Input
+            inputMode="decimal"
+            value={Number.isFinite(entities.montant_ttc) ? String(entities.montant_ttc) : ""}
+            onChange={(e) =>
+              setEntities((prev) => ({
+                ...prev,
+                montant_ttc: e.target.value === "" ? 0 : Number.parseFloat(e.target.value),
+              }))
+            }
+            placeholder="0.00"
+          />
+        </div>
+
+        <div className="space-y-1 sm:col-span-2">
+          <p className="text-xs font-medium">TVA</p>
+          <Input
+            inputMode="decimal"
+            value={Number.isFinite(entities.tva) ? String(entities.tva) : ""}
+            onChange={(e) =>
+              setEntities((prev) => ({
+                ...prev,
+                tva: e.target.value === "" ? 0 : Number.parseFloat(e.target.value),
+              }))
+            }
+            placeholder="0.00"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs font-medium">SIREN</p>
+          <Input
+            value={entities.siren ?? ""}
+            onChange={(e) => setEntities((prev) => ({ ...prev, siren: e.target.value }))}
+            placeholder="9 chiffres"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs font-medium">SIRET</p>
+          <Input
+            value={entities.siret ?? ""}
+            onChange={(e) => setEntities((prev) => ({ ...prev, siret: e.target.value }))}
+            placeholder="14 chiffres"
+          />
+        </div>
+      </section>
+
+      {onUpload && (
+        <footer className="mt-4 flex justify-end">
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            disabled={isUploading}
+            onClick={() => onUpload(entities)}
+          >
+            {isUploading ? "Envoi en cours..." : "Envoyer devis"}
+          </Button>
+        </footer>
       )}
-    </article>
+    </form>
   )
 }
-
