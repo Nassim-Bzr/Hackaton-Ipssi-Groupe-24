@@ -12,5 +12,6 @@ export interface Facture {
     siret: string
     siret_client: string
     mode_paiement: string
+    tva: number
   }
 }

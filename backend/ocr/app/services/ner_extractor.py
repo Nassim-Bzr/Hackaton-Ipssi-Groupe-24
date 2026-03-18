@@ -56,6 +56,28 @@ def extraire_montant(texte, mot_cle):
     return None
 
 
+def extraire_taux_tva(texte: str) -> float | None:
+    """
+    Extrait un taux de TVA sous la forme "TVA : 20%" (ou "taux TVA 20 %").
+    Retourne un float (ex: 20.0) ou None si non trouvé.
+    """
+    if not texte:
+        return None
+
+    # On capture le nombre avant le caractère '%'.
+    # - accepte "20%", "20 %", "20,0%", "20.0%"
+    pattern = r"(?:taux\s+)?TVA\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%"
+    match = re.search(pattern, texte, re.IGNORECASE)
+    if not match:
+        return None
+
+    valeur = match.group(1).replace(" ", "").replace(",", ".")
+    try:
+        return float(valeur)
+    except ValueError:
+        return None
+
+
 def extraire_date(texte, mots_cles):
     # Cherche une date au format JJ/MM/AAAA ou AAAA-MM-JJ près d'un mot clé
     for mot in mots_cles:
@@ -224,24 +246,46 @@ def extraire_entites(texte):
     }
 
     if type_doc == "facture":                          # Champs spécifiques à une facture
+        montant_ht = extraire_montant(texte, "HT")
+        montant_ttc = extraire_montant(texte, "TTC")
+
+        # Priorité à l'extraction explicite du taux en %.
+        tva_taux = extraire_taux_tva(texte)
+
+        # Fallback: si le PDF ne contient que le montant de TVA (pas de "%"),
+        # on calcule le taux à partir de HT et du montant TVA.
+        if tva_taux is None and montant_ht:
+            tva_montant = extraire_montant(texte, "TVA")
+            if tva_montant is not None and montant_ht != 0:
+                tva_taux = round((tva_montant / montant_ht) * 100, 2)
+
         base.update({
             "nom_fournisseur": extraire_fournisseur(texte),
             "numero_facture":  extraire_numero_facture(texte),
             "date_echeance":   extraire_date_echeance(texte),
-            "montant_ht":      extraire_montant(texte, "HT"),
-            "montant_ttc":     extraire_montant(texte, "TTC"),
-            "tva":             extraire_montant(texte, "TVA"),
+            "montant_ht":      montant_ht,
+            "montant_ttc":     montant_ttc,
+            "tva":             tva_taux,
             "iban":            extraire_iban(texte),
             "mode_paiement":   extraire_mode_paiement(texte),
         })
 
     elif type_doc == "devis":                          # Champs spécifiques à un devis
+        montant_ht = extraire_montant(texte, "HT")
+        montant_ttc = extraire_montant(texte, "TTC")
+
+        tva_taux = extraire_taux_tva(texte)
+        if tva_taux is None and montant_ht:
+            tva_montant = extraire_montant(texte, "TVA")
+            if tva_montant is not None and montant_ht != 0:
+                tva_taux = round((tva_montant / montant_ht) * 100, 2)
+
         base.update({
             "nom_fournisseur": extraire_fournisseur(texte),
             "numero_devis": extraire_numero_devis(texte),
-            "montant_ht":      extraire_montant(texte, "HT"),
-            "montant_ttc":     extraire_montant(texte, "TTC"),
-            "tva":             extraire_montant(texte, "TVA"),
+            "montant_ht":      montant_ht,
+            "montant_ttc":     montant_ttc,
+            "tva":             tva_taux,
             "date_expiration": extraire_date(texte, ["expiration", "échéance", "valable jusqu"]),
         })
 

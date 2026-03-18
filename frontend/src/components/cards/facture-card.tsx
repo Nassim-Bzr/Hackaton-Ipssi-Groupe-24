@@ -52,7 +52,7 @@ export function FactureCard(props: FactureCardProps) {
       </div>
       <div className="grid grid-cols-2 gap-2">
         <p className="font-semibold">TVA :</p>
-        <p>{document.entities.tva}</p>
+        <p>{document.entities.tva != null ? `${document.entities.tva}%` : ""}</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <p className="font-semibold">IBAN :</p>

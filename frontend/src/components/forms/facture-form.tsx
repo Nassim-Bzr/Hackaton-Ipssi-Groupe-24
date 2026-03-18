@@ -32,7 +32,8 @@ export function FactureForm({ facture, onUpload, isUploading }: FactureFormProps
       siren: "",
       siret: "",
       siret_client: "",
-      mode_paiement: ""
+      mode_paiement: "",
+      tva: 0
     }
   }, [facture])
   const [entities, setEntities] = useState<Facture["entities"]>(initialEntities)
@@ -136,6 +137,16 @@ export function FactureForm({ facture, onUpload, isUploading }: FactureFormProps
             value={entities.siren ?? ""}
             onChange={(e) => setEntities((prev) => ({ ...prev, siren: e.target.value }))}
             placeholder="9 chiffres"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs font-medium">TVA</p>
+          <Input
+            inputMode="decimal"
+            value={Number.isFinite(entities.tva) ? String(entities.tva) : ""}
+            onChange={(e) => setEntities((prev) => ({ ...prev, tva: Number.parseFloat(e.target.value) }))}
+            placeholder="0.00"
           />
         </div>
 
