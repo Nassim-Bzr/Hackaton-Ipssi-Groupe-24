@@ -1,10 +1,35 @@
 from datetime import datetime, timedelta
+import logging
 import requests
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
 VALIDATIONS_URL = "http://validations:8000"
 BACKEND_URL = "http://backend:3000"
+LOGS_URL = f"{BACKEND_URL}/pipeline/logs"
+
+
+def _send_log(context: dict, task_id: str, step_name: str, message: str, level: str = "success") -> None:
+    """Envoie un log au backend sans faire échouer la tâche en cas d'erreur."""
+    try:
+        dag_run = context.get("dag_run")
+        dag_run_id = dag_run.run_id if dag_run else ""
+        doc_id = None
+        if dag_run and dag_run.conf and isinstance(dag_run.conf, dict):
+            doc_id = dag_run.conf.get("doc_id")
+        payload = {
+            "dag_run_id": dag_run_id,
+            "task_id": task_id,
+            "step_name": step_name,
+            "message": message,
+            "level": level,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+        if doc_id is not None:
+            payload["doc_id"] = doc_id
+        requests.post(LOGS_URL, json=payload, timeout=5)
+    except Exception as e:
+        logging.warning("Envoi du log au backend ignoré: %s", e)
 
 
 def _get_conf_from_context(context: dict) -> dict:
@@ -26,13 +51,15 @@ def verifier_backend(**context):
     r = requests.get(f"{BACKEND_URL}/documents/{doc_id}", timeout=10)
     r.raise_for_status()
     print(f"[verifier_backend] Document {doc_id} trouvé côté backend.")
+    _send_log(context, "verifier_backend", "Vérification backend", f"Document {doc_id} trouvé côté backend.", "success")
 
 
-def verifier_validations():
+def verifier_validations(**context):
     """Vérifie que le service de validations est accessible."""
     r = requests.get(f"{VALIDATIONS_URL}/docs", timeout=10)
     r.raise_for_status()
     print("[verifier_validations] Service de validations accessible.")
+    _send_log(context, "verifier_validations", "Vérification validations", "Service de validations accessible.", "success")
 
 
 def valider_donnees(**context):
@@ -68,6 +95,7 @@ def valider_donnees(**context):
     r = requests.post(f"{VALIDATIONS_URL}/data-validation", json=payload, timeout=20)
     r.raise_for_status()
     print(f"[valider_donnees] Données validées pour le document {doc_id} (siret={siret}, montant={montant}).")
+    _send_log(context, "valider_donnees", "Validation des données", f"Données validées pour le document {doc_id} (siret={siret}, montant={montant}).", "success")
 
 
 def verifier_coherence(**context):
@@ -103,6 +131,7 @@ def verifier_coherence(**context):
     r = requests.post(f"{VALIDATIONS_URL}/coherence-check", json=payload, timeout=20)
     r.raise_for_status()
     print(f"[verifier_coherence] Cohérence documentaire vérifiée pour le document {doc_id}.")
+    _send_log(context, "verifier_coherence", "Vérification cohérence", f"Cohérence documentaire vérifiée pour le document {doc_id}.", "success")
 
 
 def fin_pipeline(**context):
@@ -117,8 +146,10 @@ def fin_pipeline(**context):
     doc_id = conf.get("doc_id") if isinstance(conf, dict) else None
     if doc_id:
         print(f"Pipeline terminée pour le document {doc_id}.")
+        _send_log(context, "fin_pipeline", "Fin pipeline", f"Pipeline terminée pour le document {doc_id}.", "success")
     else:
         print("Pipeline terminée (doc_id non renseigné).")
+        _send_log(context, "fin_pipeline", "Fin pipeline", "Pipeline terminée (doc_id non renseigné).", "success")
 
 
 with DAG(
