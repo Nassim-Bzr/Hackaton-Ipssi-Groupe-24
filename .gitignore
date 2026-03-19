@@ -24,3 +24,10 @@ data/gold/
 
 # IDE / outils locaux
 .vscode/
+
+# airflow
+airflow/*
+
+!airflow/dags/
+!airflow/dags/**.py
+!airflow/Dockerfile
