@@ -45,17 +45,17 @@ def verifier_date_expiration(date_str: Optional[str]) -> dict:
 
 
 def verifier_tva_coherente(montant_ht: Optional[float], tva: Optional[float], montant_ttc: Optional[float]) -> dict:
-    """Vérifie que HT + TVA ≈ TTC (tolérance de 0.05€ pour les arrondis)."""
+    """Vérifie que HT × (1 + TVA%) ≈ TTC (tva en pourcentage, tolérance 0.05€)."""
     if montant_ht is None or tva is None or montant_ttc is None:
         return {
             "valide": True,
             "message": "Montants incomplets — vérification TVA ignorée"
         }
-    ttc_calcule = round(montant_ht + tva, 2)
+    ttc_calcule = round(montant_ht * (1 + tva / 100), 2)
     ecart = abs(ttc_calcule - montant_ttc)
     if ecart > 0.05:
         return {
             "valide": False,
-            "message": f"TVA incohérente : {montant_ht} HT + {tva} TVA = {ttc_calcule} ≠ {montant_ttc} TTC (écart: {round(ecart, 2)}€)"
+            "message": f"TVA incohérente : {montant_ht} HT × (1 + {tva}%) = {ttc_calcule} ≠ {montant_ttc} TTC (écart: {round(ecart, 2)}€)"
         }
-    return {"valide": True, "message": f"TVA cohérente : {montant_ht} + {tva} = {montant_ttc}"}
+    return {"valide": True, "message": f"TVA cohérente : {montant_ht} HT × (1 + {tva}%) = {montant_ttc}"}

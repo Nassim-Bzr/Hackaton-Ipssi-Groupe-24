@@ -2,6 +2,7 @@ from typing import Optional, Dict, Any, List
 
 import requests
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from validators.siret import is_valid_siret, siret_error_message
@@ -34,6 +35,13 @@ class ValidationResponse(BaseModel):
 
 app = FastAPI(title="Validations service", version="1.0.0")
 
+# CORS pour autoriser le frontend (localhost:5173) à appeler POST /coherence-check
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ─── Modèles pour la vérification inter-documents ───────────────────────────
 
