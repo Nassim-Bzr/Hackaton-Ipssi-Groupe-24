@@ -61,6 +61,47 @@ def initialize_data_lake() -> dict:
         return {"enabled": True, "created": created, "error": str(err)}
 
 
+def parse_s3_uri(s3_uri: str) -> tuple[str, str]:
+    """
+    Parse une URI de la forme `s3://bucket/object/path.json` en (bucket, object_name).
+    """
+    if not s3_uri or not isinstance(s3_uri, str):
+        raise ValueError("URI S3 invalide.")
+    if not s3_uri.startswith("s3://"):
+        raise ValueError("URI S3 invalide (attendu: s3://...).")
+
+    remainder = s3_uri[len("s3://") :]
+    bucket_name, _, object_name = remainder.partition("/")
+    if not bucket_name or not object_name:
+        raise ValueError("URI S3 invalide (bucket et object_name requis).")
+    return bucket_name, object_name
+
+
+def object_exists(s3_uri: str) -> bool:
+    """
+    Vérifie l'existence d'un objet dans Minio.
+
+    Retourne `True` si Minio est désactivé (skip). Sinon, tente un `stat_object`.
+    """
+    if not DATA_LAKE_ENABLED:
+        return True
+    if _client is None:
+        return False
+    if not s3_uri:
+        return False
+
+    try:
+        bucket_name, object_name = parse_s3_uri(s3_uri)
+    except ValueError:
+        return False
+
+    try:
+        _client.stat_object(bucket_name, object_name)
+        return True
+    except S3Error:
+        return False
+
+
 def _safe_filename(filename: str | None) -> str:
     if not filename:
         return "document.pdf"

@@ -7,6 +7,7 @@ from airflow.operators.python import PythonOperator
 VALIDATIONS_URL = "http://validations:8000"
 BACKEND_URL = "http://backend:3000"
 LOGS_URL = f"{BACKEND_URL}/pipeline/logs"
+MINIO_STATUS_URL = f"{BACKEND_URL}/pipeline/minio-status"
 
 
 def _send_log(context: dict, task_id: str, step_name: str, message: str, level: str = "success") -> None:
@@ -52,6 +53,55 @@ def verifier_backend(**context):
     r.raise_for_status()
     print(f"[verifier_backend] Document {doc_id} trouvé côté backend.")
     _send_log(context, "verifier_backend", "Vérification backend", f"Document {doc_id} trouvé côté backend.", "success")
+
+
+def _verifier_minio_objet(context: dict, task_id: str, objet_cle: str, step_name: str) -> None:
+    """Vérifie qu'un objet data-lake existe dans Minio pour un `doc_id` donné."""
+    conf = _get_conf_from_context(context)
+    doc_id = conf.get("doc_id")
+    if not doc_id:
+        raise ValueError("Champ `doc_id` manquant dans le payload Airflow (dag_run.conf).")
+
+    try:
+        r = requests.get(f"{MINIO_STATUS_URL}/{doc_id}", timeout=10)
+        r.raise_for_status()
+        data = r.json()
+    except Exception as exc:
+        _send_log(context, task_id, step_name, f"Impossible de vérifier Minio pour {objet_cle}: {exc}", "error")
+        raise
+
+    if not data.get("enabled", True):
+        _send_log(context, task_id, step_name, f"Data-lake Minio désactivé: skip {objet_cle}.", "success")
+        return
+
+    objet_info = data.get(objet_cle) or {}
+    uri = objet_info.get("uri")
+    exists = objet_info.get("exists")
+
+    if exists is True:
+        _send_log(context, task_id, step_name, f"Minio OK ({objet_cle}) pour doc_id={doc_id}: {uri}", "success")
+        return
+
+    _send_log(
+        context,
+        task_id,
+        step_name,
+        f"Minio manquant ({objet_cle}) pour doc_id={doc_id}: {uri}",
+        "error",
+    )
+    raise ValueError(f"Objet Minio manquant: {objet_cle} pour doc_id={doc_id}.")
+
+
+def verifier_minio_raw(**context):
+    _verifier_minio_objet(context, "verifier_minio_raw", "raw", "Vérification Minio raw")
+
+
+def verifier_minio_clean(**context):
+    _verifier_minio_objet(context, "verifier_minio_clean", "clean", "Vérification Minio clean")
+
+
+def verifier_minio_curated(**context):
+    _verifier_minio_objet(context, "verifier_minio_curated", "curated", "Vérification Minio curated")
 
 
 def verifier_validations(**context):
@@ -161,9 +211,13 @@ with DAG(
     tags=["hackathon", "pipeline"],
 ) as dag:
     t_backend = PythonOperator(task_id="verifier_backend", python_callable=verifier_backend)
+    t_minio_raw = PythonOperator(task_id="verifier_minio_raw", python_callable=verifier_minio_raw)
+    t_minio_clean = PythonOperator(task_id="verifier_minio_clean", python_callable=verifier_minio_clean)
+    t_minio_curated = PythonOperator(task_id="verifier_minio_curated", python_callable=verifier_minio_curated)
+
     t_valid = PythonOperator(task_id="verifier_validations", python_callable=verifier_validations)
     t_data = PythonOperator(task_id="valider_donnees", python_callable=valider_donnees)
     t_coherence = PythonOperator(task_id="verifier_coherence", python_callable=verifier_coherence)
     t_fin = PythonOperator(task_id="fin_pipeline", python_callable=fin_pipeline)
 
-    [t_backend, t_valid] >> t_data >> t_coherence >> t_fin
+    t_backend >> [t_minio_raw, t_minio_clean, t_minio_curated] >> t_valid >> t_data >> t_coherence >> t_fin
