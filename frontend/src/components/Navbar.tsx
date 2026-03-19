@@ -19,6 +19,14 @@ export function Navbar() {
       >
         Tous les documents
       </NavLink>
+      <NavLink
+        to="/logs"
+        className={({ isActive }) =>
+          `hover:underline ${isActive ? "underline" : ""}`
+        }
+      >
+        Logs
+      </NavLink>
     </nav>
   )
 }

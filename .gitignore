@@ -25,9 +25,8 @@ data/gold/
 # IDE / outils locaux
 .vscode/
 
-# airflow
+# Airflow : ignorer tout sauf les DAG (.py) et le Dockerfile
 airflow/*
-
 !airflow/dags/
-!airflow/dags/**.py
+!airflow/dags/*.py
 !airflow/Dockerfile

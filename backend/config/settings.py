@@ -3,6 +3,7 @@ import os
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://mongodb:27017")
 MONGO_DB = os.getenv("MONGO_DB", "hackathon")
 MONGO_COLLECTION = "documents"
+MONGO_COLLECTION_LOGS = "pipeline_logs"
 
 VALIDATION_SERVICE_URL = os.getenv(
     "VALIDATION_SERVICE_URL", "http://validations:8000/data-validation"
