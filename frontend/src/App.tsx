@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom"
 
 import { Navbar } from "@/components/Navbar"
 import { DocumentsPage } from "@/pages/DocumentsPage"
+import { LogsPage } from "@/pages/LogsPage"
 import { UploadPage } from "@/pages/UploadPage"
 
 export function App() {
@@ -12,6 +13,7 @@ export function App() {
         <Route path="/" element={<UploadPage />} />
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/documents" element={<DocumentsPage />} />
+        <Route path="/logs" element={<LogsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </main>

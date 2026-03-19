@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import type { UploadToBddVariables } from "@/hooks/use-upload-to-bdd"
+import type { UploadToBddResponse, UploadToBddVariables } from "@/hooks/use-upload-to-bdd"
 import { useUploadToBdd } from "@/hooks/use-upload-to-bdd"
 import type { Devis } from "@/types/devis.type"
 import type { Facture } from "@/types/facture.type"
@@ -13,7 +13,6 @@ import {
   mapBackendAnalysisToPdfForm,
 } from "@/utils/handle-pdf-files"
 import { handleUploadAll as handleUploadAllUtil } from "@/utils/handle-upload-all"
-import { uploadSingleForm as uploadSingleFormUtil } from "@/utils/upload-single-form"
 import { useMutation } from "@tanstack/react-query"
 import React, { useCallback, useRef, useState } from "react"
 import { DevisForm } from "./forms/devis-form"
@@ -154,6 +153,27 @@ export function PdfUploader() {
     [],
   )
 
+  const triggerAirflowForUploadResult = useCallback(
+    async (data: UploadToBddResponse, variables: UploadToBddVariables) => {
+      const response = await fetch("http://localhost:3000/pipeline/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          doc_id: data.doc_id,
+          document_type: data.document_type,
+          is_valid: data.is_valid,
+          id: variables.id,
+          nom: variables.nom,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Déclenchement Airflow impossible pour ce document.")
+      }
+    },
+    [],
+  )
+
   /**
    * Callback pour l’upload BDD (succès) par index
    * On met à jour le formulaire à l'index donné
@@ -164,15 +184,29 @@ export function PdfUploader() {
    * avec les nouvelles valeurs
    */
   const onUploadToBddSuccess = useCallback(
-    (_data: unknown, variables: UploadToBddVariables) => {
+    async (data: UploadToBddResponse, variables: UploadToBddVariables) => {
       setUploadingIndex(null)
+
+      // Mise à jour de l'état du formulaire dans l'UI
       updateFormAtIndex(variables.index, (form) => ({
         ...form,
         uploadState: "success",
         message: "Ce formulaire a été envoyé avec succès.",
       }))
+
+      // Déclenchement de la pipeline Airflow une fois le document enregistré en BDD.
+      // Le flux unitaire et le flux global partagent cette même logique.
+      try {
+        await triggerAirflowForUploadResult(data, variables)
+      } catch (error) {
+        console.error("Erreur lors du déclenchement de la pipeline Airflow :", error)
+        updateFormAtIndex(variables.index, (form) => ({
+          ...form,
+          message: "Document envoyé mais Airflow n'a pas pu être déclenché.",
+        }))
+      }
     },
-    [updateFormAtIndex],
+    [triggerAirflowForUploadResult, updateFormAtIndex],
   )
 
   /**
@@ -228,8 +262,71 @@ export function PdfUploader() {
    * Fonction wrapper qui permet facilement d'identifier le formulaire à uploader
    */
   const uploadSingleForm = useCallback(
-    (index: number) => uploadSingleFormUtil(index, forms, updateFormAtIndex),
-    [forms, updateFormAtIndex],
+    async (index: number) => {
+      const form = forms[index]
+      if (!form) return false
+
+      if (!form.id || !form.nom) {
+        updateFormAtIndex(index, (current) => ({
+          ...current,
+          message: "Veuillez renseigner l'ID et le nom avant l'envoi.",
+          uploadState: "error",
+        }))
+        return false
+      }
+
+      const isFacture = form.documentType === "facture"
+      const documentType = isFacture ? "facture" : "devis"
+      const entities = isFacture ? form.facture?.entities : form.devis?.entities
+
+      if (!entities) {
+        updateFormAtIndex(index, (current) => ({
+          ...current,
+          message: "Les données du document sont incomplètes pour l'envoi.",
+          uploadState: "error",
+        }))
+        return false
+      }
+
+      setUploadingIndex(index)
+      updateFormAtIndex(index, (current) => ({
+        ...current,
+        uploadState: "uploading",
+        message: null,
+      }))
+
+      try {
+        const data = await uploadToBddMutation.mutateAsync({
+          index,
+          file: form.file,
+          id: form.id,
+          nom: form.nom,
+          entities,
+          documentType,
+        })
+        await onUploadToBddSuccess(data, {
+          index,
+          file: form.file,
+          id: form.id,
+          nom: form.nom,
+          entities,
+          documentType,
+        })
+        return true
+      } catch (error) {
+        const uploadError = error instanceof Error ? error : new Error("Erreur inconnue")
+        onUploadToBddError(uploadError, {
+          index,
+          file: form.file,
+          id: form.id,
+          nom: form.nom,
+          entities,
+          documentType,
+        })
+        return false
+      }
+    },
+    [forms, onUploadToBddError, onUploadToBddSuccess, updateFormAtIndex, uploadToBddMutation],
   )
 
   /**
