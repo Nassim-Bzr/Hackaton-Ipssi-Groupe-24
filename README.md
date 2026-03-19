@@ -19,14 +19,22 @@ docker compose up --build -d
 - Frontend: http://localhost:5173
 - Backend: http://localhost:3000
 - Validation: http://localhost:8000
-- MongoDB: localhost:27017
+- MongoDB: http://localhost:27017
 - MinIO API: http://localhost:9000
 - MinIO Console: http://localhost:9001
+- Airflow: http://localhost:8080
 
 Identifiants MinIO par défaut:
 
 - user: minioadmin
 - password: minioadmin
+
+Identifiants Airflow par defaut (créer depuis le docker-compose):
+
+- user: admin
+- password: admin
+
+Trigger par évenement au moments d'envoyer un ou plusieurs formulaires
 
 ### Contrat Data Lake backend
 

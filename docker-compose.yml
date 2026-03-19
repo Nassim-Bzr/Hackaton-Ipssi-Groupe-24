@@ -45,6 +45,67 @@ services:
     depends_on:
       - mongodb
 
+  # Airflow : métadonnées en SQLite (fichier local), MongoDB reste la BDD applicative
+  airflow-init:
+    build:
+      context: ./airflow
+      dockerfile: Dockerfile
+    image: airflow-local:2.10.1
+    container_name: airflow-init
+    environment:
+      - AIRFLOW_UID=50000
+      - AIRFLOW_GID=50000
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__FERNET_KEY=
+      - _PIP_ADDITIONAL_REQUIREMENTS=
+    volumes:
+      - ./airflow:/opt/airflow
+    user: "50000:50000"
+    command: >
+      bash -c "
+      airflow db init &&
+      (airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@localhost --password admin || true)
+      "
+    depends_on:
+      - mongodb
+      - validations
+      - minio
+      - minio-init
+
+  airflow:
+    build:
+      context: ./airflow
+      dockerfile: Dockerfile
+    image: airflow-local:2.10.1
+    container_name: airflow
+    ports:
+      - "8080:8080"
+    environment:
+      - AIRFLOW_UID=50000
+      - AIRFLOW_GID=50000
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=False
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+      mongodb:
+        condition: service_started
+      validations:
+        condition: service_started
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+    volumes:
+      - ./airflow:/opt/airflow
+    user: "50000:50000"
+    # standalone = scheduler + webserver dans un seul conteneur (idéal avec SQLite)
+    command: airflow standalone
+
   backend:
     build:
       context: ./backend

@@ -1,0 +1,18 @@
+[2026-03-19T10:14:23.700+0000] {local_task_job_runner.py:123} INFO - ::group::Pre task execution logs
+[2026-03-19T10:14:23.703+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: pipeline_documentaire.verifier_coherence doc-ee6ec3bb-5835-45b0-bbbf-1d6d355fabcb-2026-03-19T10:14:17 [queued]>
+[2026-03-19T10:14:23.706+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: pipeline_documentaire.verifier_coherence doc-ee6ec3bb-5835-45b0-bbbf-1d6d355fabcb-2026-03-19T10:14:17 [queued]>
+[2026-03-19T10:14:23.706+0000] {taskinstance.py:2865} INFO - Starting attempt 1 of 2
+[2026-03-19T10:14:23.711+0000] {taskinstance.py:2888} INFO - Executing <Task(PythonOperator): verifier_coherence> on 2026-03-19 10:14:17.280087+00:00
+[2026-03-19T10:14:23.712+0000] {standard_task_runner.py:72} INFO - Started process 128 to run task
+[2026-03-19T10:14:23.714+0000] {standard_task_runner.py:104} INFO - Running: ['airflow', 'tasks', 'run', 'pipeline_documentaire', 'verifier_coherence', 'doc-ee6ec3bb-5835-45b0-bbbf-1d6d355fabcb-2026-03-19T10:14:17', '--job-id', '74', '--raw', '--subdir', 'DAGS_FOLDER/pipeline_documentaire.py', '--cfg-path', '/tmp/tmp_nduaeku']
+[2026-03-19T10:14:23.715+0000] {standard_task_runner.py:105} INFO - Job 74: Subtask verifier_coherence
+[2026-03-19T10:14:23.730+0000] {task_command.py:467} INFO - Running <TaskInstance: pipeline_documentaire.verifier_coherence doc-ee6ec3bb-5835-45b0-bbbf-1d6d355fabcb-2026-03-19T10:14:17 [running]> on host a0a4035daf67
+[2026-03-19T10:14:23.752+0000] {taskinstance.py:3131} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='airflow' AIRFLOW_CTX_DAG_ID='pipeline_documentaire' AIRFLOW_CTX_TASK_ID='verifier_coherence' AIRFLOW_CTX_EXECUTION_DATE='2026-03-19T10:14:17.280087+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='doc-ee6ec3bb-5835-45b0-bbbf-1d6d355fabcb-2026-03-19T10:14:17'
+[2026-03-19T10:14:23.753+0000] {taskinstance.py:731} INFO - ::endgroup::
+[2026-03-19T10:14:23.762+0000] {logging_mixin.py:190} INFO - [verifier_coherence] Cohérence documentaire vérifiée pour le document ee6ec3bb-5835-45b0-bbbf-1d6d355fabcb.
+[2026-03-19T10:14:23.763+0000] {python.py:240} INFO - Done. Returned value was: None
+[2026-03-19T10:14:23.765+0000] {taskinstance.py:340} INFO - ::group::Post task execution logs
+[2026-03-19T10:14:23.765+0000] {taskinstance.py:352} INFO - Marking task as SUCCESS. dag_id=pipeline_documentaire, task_id=verifier_coherence, run_id=doc-ee6ec3bb-5835-45b0-bbbf-1d6d355fabcb-2026-03-19T10:14:17, execution_date=20260319T101417, start_date=20260319T101423, end_date=20260319T101423
+[2026-03-19T10:14:23.815+0000] {local_task_job_runner.py:266} INFO - Task exited with return code 0
+[2026-03-19T10:14:23.822+0000] {taskinstance.py:3900} INFO - 1 downstream tasks scheduled from follow-on schedule check
+[2026-03-19T10:14:23.823+0000] {local_task_job_runner.py:245} INFO - ::endgroup::

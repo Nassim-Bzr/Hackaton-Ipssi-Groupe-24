@@ -19,3 +19,11 @@ DATA_LAKE_SECURE = os.getenv("DATA_LAKE_SECURE", "false").lower() == "true"
 RAW_BUCKET = os.getenv("RAW_BUCKET", "raw")
 CLEAN_BUCKET = os.getenv("CLEAN_BUCKET", "clean")
 CURATED_BUCKET = os.getenv("CURATED_BUCKET", "curated")
+
+# Configuration de l'API Airflow pour déclencher la DAG depuis le backend
+AIRFLOW_API_URL = os.getenv(
+    "AIRFLOW_API_URL",
+    "http://airflow:8080/api/v1/dags/pipeline_documentaire/dagRuns",
+)
+AIRFLOW_USERNAME = os.getenv("AIRFLOW_USERNAME", "admin")
+AIRFLOW_PASSWORD = os.getenv("AIRFLOW_PASSWORD", "admin")

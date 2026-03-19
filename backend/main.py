@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes import upload, documents, upload_to_bdd
+from app.routes import pipeline_airflow
 from app.services.data_lake_service import initialize_data_lake
 
 app = FastAPI(title="Hackathon IPSSI - Backend", version="1.0.0")
@@ -16,11 +17,13 @@ app.add_middleware(
 app.include_router(upload.router)
 app.include_router(documents.router)
 app.include_router(upload_to_bdd.router)
+app.include_router(pipeline_airflow.router)
 
 
 @app.on_event("startup")
 def startup_data_lake() -> None:
     initialize_data_lake()
+
 
 @app.get("/health")
 def health():
